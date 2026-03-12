@@ -37,11 +37,9 @@ Do not iterate on the file structure. There are no additional files or folders. 
 | **Connect only** | A | User just wants to establish or verify a connection |
 | **Document** | A → B | User wants model documentation |
 | **Health check** | A → C | User wants a health-check report |
-| **Document + Health check** | A → B → C | User wants both documentation and health checks |
-| **Health check + Document** | A → C → B | User wants both, health check first |
-| **Full review** | A → B + C | User wants everything — documentation and health check run after connection |
+| **Full review** | A → B ∥ C | User wants both — documentation and health check run **in parallel** after connection |
 
-> **Rule:** B and C do **not** depend on each other. When the user requests both, you may run them in either order, or note that they are independent.
+> **Rule:** B and C do **not** depend on each other. When the plan includes both B and C, they **must** be launched in parallel (two concurrent `runSubagent` calls in the same turn), not sequentially.
 
 ---
 
@@ -81,7 +79,86 @@ Proceed? (y/n)
 
 If the intent is unambiguous (e.g., "run health checks on my local model"), you may proceed without waiting for confirmation. If the request is vague or could match multiple plans, always ask first.
 
-### Phase 2 — Execute Step-by-Step
+After the user confirms (or when intent is unambiguous), ask how they want to execute:
+
+```
+⚙️ Execution Mode
+─────────────────
+1. Interactive — I execute each step here in the conversation
+2. Background  — I save the plan to a file and hand it off to a background agent
+
+Choose (1/2):
+```
+
+If the user explicitly says "run in background" or "background" in their original request, skip this prompt and go straight to background mode.
+
+- **Interactive** → proceed to Phase 2 as normal.
+- **Background** → proceed to Phase 1.5.
+
+### Phase 1.5 — Save Execution Plan File (background mode only)
+
+Create a file named `Execution_Plan.md` in the output path using the `edit/createFile` tool. The file captures everything the background agent needs to execute autonomously:
+
+```markdown
+# Execution Plan — [Model Name]
+
+> **Created:** [timestamp]
+> **Mode:** Background
+> **Status:** ⏳ In Progress
+
+---
+
+## Connection Parameters
+
+| Field | Value |
+|-------|-------|
+| Mode | [local / Fabric] |
+| Semantic Model | [name] |
+| Workspace | [name or N/A] |
+
+---
+
+## Steps
+
+| # | Agent | Outcome | Output File | Status | Parallel Group |
+|---|-------|---------|-------------|--------|----------------|
+| 1 | Connect PBI Model Agent | Connect and confirm | — | ⏳ Pending | — |
+| 2 | Power BI Documentation Agent | Generate documentation | Model_Documentation.md | ⏳ Pending | G1 |
+| 3 | Power BI Health Check | Run health checks | Health_Check_Report.md | ⏳ Pending | G1 |
+
+> Steps sharing the same **Parallel Group** run concurrently after all prior steps complete.
+> Omit rows for agents not included in this plan.
+
+---
+
+## Execution Log
+
+(Background agent appends results here as each step completes)
+```
+
+After saving, confirm the file path to the user and proceed to Phase 1.6.
+
+### Phase 1.6 — Background Handoff (background mode only)
+
+Invoke `runSubagent` with a detailed prompt that:
+
+1. Tells the background agent to **read `Execution_Plan.md`** at the saved file path
+2. Instructs it to execute each step in order by delegating to the named specialist agents via `runSubagent`
+3. For steps in the same **Parallel Group**, instructs it to launch them **concurrently** (multiple `runSubagent` calls in the same turn)
+4. After each step completes, update the step's status in `Execution_Plan.md` (⏳ → ✅ or ❌) and append a log entry
+5. After all steps complete, update the top-level Status to ✅ Complete or ❌ Failed
+6. Follows the same **Delegation Rules** defined below — describe WHAT, never HOW
+
+After invoking the background agent, inform the user:
+
+```
+🚀 Plan handed off to background agent.
+📄 Track progress in: Execution_Plan.md
+```
+
+The orchestrator's turn is now complete. The background agent runs autonomously.
+
+### Phase 2 — Execute Step-by-Step (interactive mode)
 
 Execute the plan in order. Each step follows the same pattern:
 
@@ -96,6 +173,17 @@ Delegate to **Connect PBI Model Agent** with:
 - The semantic model name (and workspace if Fabric)
 
 Do **not** proceed until the agent confirms: model name, connection mode, and connection ID/port.
+
+#### Parallel Dispatch (Agents B + C)
+
+If the plan includes **both** B and C:
+
+1. Invoke both agents **concurrently** — two `runSubagent` calls in the same turn.
+2. Each agent receives the confirmed connection reference and its specific outcome (see below).
+3. Collect results from both. If one fails, the other still proceeds independently.
+4. Report results for each agent separately before moving to Phase 3.
+
+If the plan includes **only** B or **only** C, invoke the single agent and wait for its result (no parallel dispatch).
 
 #### Documentation (Agent B)
 
@@ -118,6 +206,17 @@ After all steps complete, provide a final summary:
 - Artifact file paths produced
 - Key findings or numbers (e.g., "12 tables documented, 3/5 health checks passed")
 - Any issues that need user attention
+
+When B and C ran in parallel, report each agent's result independently. If one succeeded and the other failed, clearly state which failed and why.
+
+#### Re-engagement after background execution
+
+If the user returns and asks about the status of a previous background run:
+
+1. Read `Execution_Plan.md` from the output path
+2. Check the top-level **Status** and each step's **Status** column
+3. Read the **Execution Log** section for details
+4. Present the same summary format as above, based on the plan file contents
 
 ---
 
