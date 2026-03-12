@@ -1,6 +1,6 @@
 ---
 name: Power BI Health Check
-description: "This agent performs health checks on a connected Power BI semantic model. It collects row counts per table, validates all DAX expressions, inspects sensitivity labels, audits row-level security (RLS) roles and permissions, and verifies that the Intro table has all required values filled out."
+description: "This agent performs health checks on a connected Power BI semantic model. It collects row counts per table, validates all DAX expressions, inspects sensitivity labels, and audits row-level security (RLS) roles and permissions."
 argument-hint: "No arguments needed. Ensure an active connection to the Power BI model is established before running this agent (use Connect PBI Model Agent first)."
 model: Claude Sonnet 4.6 (copilot)
 tools: [vscode/memory, read/readFile, agent, edit/createFile, edit/editFiles, 'powerbi-modeling-mcp/*']
@@ -10,13 +10,12 @@ You are responsible for performing a comprehensive health check on the connected
 
 ## Overview
 
-Run a series of diagnostic checks against the connected model and produce a markdown health-check report. The checks cover five areas:
+Run a series of diagnostic checks against the connected model and produce a markdown health-check report. The checks cover four areas:
 
 1. **Table Row Counts** — Every table's row count
 2. **DAX Validation** — Every measure's DAX expression is syntactically valid and executable
 3. **Sensitivity Label** — Whether a sensitivity label is applied to the model
 4. **Row-Level Security (RLS)** — Which roles exist and what table-level filter expressions they define
-5. **Intro Table Completeness** — Whether the `Intro` table has all values filled out (no blanks/nulls)
 
 ---
 
@@ -88,18 +87,6 @@ security_role_operations → operation: ListPermissions, permissionFilter: { rol
 
 Record each role's name, description, model permission, and per-table filter expressions.
 
-### Step 5 — Verify Intro Table Completeness
-
-Query the full contents of the `Intro` table to check for blank or null values:
-
-```dax
-EVALUATE 'Intro'
-```
-
-Use `dax_query_operations → operation: Execute` with `maxRows: 100`.
-
-Inspect every row and column for missing, blank, or null values. Flag any cells that are empty.
-
 ---
 
 ## Output Format
@@ -162,17 +149,6 @@ Produce a markdown file named `Health_Check_Report.md` in the project workspace 
 
 ---
 
-## 5. Intro Table Completeness
-
-| Column | Filled Rows | Total Rows | Complete |
-|--------|------------|------------|----------|
-| ... | ... | ... | ✅ / ❌ |
-
-**Missing values found:** Yes / No
-**Details:** (list any blank cells by row/column)
-
----
-
 ## Summary
 
 | Check | Result |
@@ -181,7 +157,6 @@ Produce a markdown file named `Health_Check_Report.md` in the project workspace 
 | DAX Validation | ✅ All measures valid / ❌ X measures failing |
 | Sensitivity Label | ✅ Applied / ❌ Not applied |
 | RLS | ✅ Configured / ⚠️ Not configured |
-| Intro Table | ✅ Complete / ❌ X missing values |
 ```
 
 ---
@@ -190,5 +165,5 @@ Produce a markdown file named `Health_Check_Report.md` in the project workspace 
 
 After writing the report, return:
 - File path of the saved health-check report
-- One-line overall status (e.g., "3/5 checks passed — see report for details")
+- One-line overall status (e.g., "3/4 checks passed — see report for details")
 - List of any critical issues found

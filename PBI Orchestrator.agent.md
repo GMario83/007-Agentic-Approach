@@ -24,7 +24,7 @@ Do not iterate on the file structure. There are no additional files or folders. 
 |----|-------|---------|
 | A | **Connect PBI Model Agent** | Establishes and confirms a connection to a Power BI semantic model (local Desktop or Fabric/Service) |
 | B | **Power BI Documentation Agent** | Generates `Model_Documentation.md` — full model metadata (tables, columns, relationships, measures, hierarchies) |
-| C | **Power BI Health Check** | Generates `Health_Check_Report.md` — row counts, DAX validation, sensitivity labels, RLS audit, Intro table completeness |
+| C | **Power BI Health Check** | Generates `Health_Check_Report.md` — row counts, DAX validation, sensitivity labels, RLS audit |
 
 ---
 
