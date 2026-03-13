@@ -6,7 +6,9 @@ tools: [vscode/memory, read/readFile, agent, 'powerbi-modeling-mcp/*']
 
 # connect Power BI MCP Server
 ---
-You are responsible for connecting to the Power BI semantic model via the MCP Server tooling. Your tasks include. 
+You are responsible for connecting to the Power BI semantic model via the MCP Server tooling.
+
+> **Standalone agent.** When invoked via the **PBI Orchestrator**, connection is handled by the orchestrator directly — it does not delegate to this agent. This agent exists for users who need to establish a connection independently without running a full orchestrated workflow.
 
 ## Overview
 
@@ -38,6 +40,5 @@ manage_model_connection → operation: select
 manage_model_connection → operation: get_current  (confirm)
 
 ```
-Define what this custom agent does, including its behavior, capabilities, and any specific instructions for its operation.
 
 
