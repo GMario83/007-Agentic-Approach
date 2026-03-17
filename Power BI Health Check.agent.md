@@ -1,6 +1,6 @@
 ---
 name: Power BI Health Check
-description: "This agent performs health checks on a connected Power BI semantic model. It collects row counts per table, validates all DAX expressions, inspects sensitivity labels, and audits row-level security (RLS) roles and permissions."
+description: "This agent performs health checks on a connected Power BI semantic model. It collects row counts per table and validates all DAX expressions with execution-time measurement."
 argument-hint: "No arguments needed. Ensure an active connection to the Power BI model is established before running this agent (use Connect PBI Model Agent first)."
 model: Claude Sonnet 4.6 (copilot)
 tools: [vscode/memory, read/readFile, agent, edit/createFile, edit/editFiles, 'powerbi-modeling-mcp/*']
@@ -10,12 +10,10 @@ You are responsible for performing a comprehensive health check on the connected
 
 ## Overview
 
-Run a series of diagnostic checks against the connected model and produce a markdown health-check report. The checks cover four areas:
+Run a series of diagnostic checks against the connected model and produce a markdown health-check report. The checks cover two areas:
 
 1. **Table Row Counts** — Every table's row count
-2. **DAX Validation** — Every measure's DAX expression is syntactically valid and executable
-3. **Sensitivity Label** — Whether a sensitivity label is applied to the model
-4. **Row-Level Security (RLS)** — Which roles exist and what table-level filter expressions they define
+2. **DAX Validation** — Every measure's DAX expression is syntactically valid and executable, with execution-time measurement
 
 ---
 
@@ -37,7 +35,7 @@ EVALUATE ROW("Table", "<TableName>", "RowCount", COUNTROWS('<TableName>'))
 
 Use `dax_query_operations → operation: Execute` with the query above for each table. Collect results into a summary table.
 
-### Step 2 — Validate DAX Expressions
+### Step 2 — Validate DAX Expressions (with Execution Timing)
 
 Retrieve all measures from the model:
 
@@ -55,37 +53,16 @@ Record each measure's validation result as **Pass** or **Fail** (with error mess
 
 > **Tip:** If a measure references other measures or columns, a simple `EVALUATE ROW(...)` wrapper may fail. In that case, try `EVALUATE { <measure_name> }` and report any errors.
 
-### Step 3 — Check Sensitivity Label
+#### Execution-Time Measurement
 
-Inspect model-level metadata for sensitivity label information:
+For every measure that passes validation, execute the DAX query and measure the wall-clock time:
 
-```plaintext
-model_operations → operation: Get
-```
+1. Record a **start timestamp** immediately before calling `dax_query_operations → operation: Execute`.
+2. Record an **end timestamp** immediately after the call returns.
+3. Compute **Execution Time (ms)** = end − start.
+4. Flag measures that exceed **1 000 ms** as ⚠️ Slow and those exceeding **5 000 ms** as 🔴 Critical.
 
-Look for annotations or properties related to sensitivity labels (commonly stored as annotations with keys like `SensitivityLabelId`, `__SensitivityLabel`, or similar). Report whether a label is applied, and if so, its value.
-
-Also check database-level properties:
-
-```plaintext
-database_operations → operation: List
-```
-
-### Step 4 — Audit Row-Level Security (RLS)
-
-List all security roles defined in the model:
-
-```plaintext
-security_role_operations → operation: List
-```
-
-For each role found, list its table-level permissions and filter expressions:
-
-```plaintext
-security_role_operations → operation: ListPermissions, permissionFilter: { roleName: "<RoleName>" }
-```
-
-Record each role's name, description, model permission, and per-table filter expressions.
+> **Note:** Execution times reflect the current environment and data volume. They are indicative, not absolute benchmarks.
 
 ---
 
@@ -165,5 +142,5 @@ Produce a markdown file named `Health_Check_Report.md` in the project workspace 
 
 After writing the report, return:
 - File path of the saved health-check report
-- One-line overall status (e.g., "3/4 checks passed — see report for details")
-- List of any critical issues found
+- One-line overall status (e.g., "2/3 checks passed — see report for details")
+- List of any critical issues found (including slow-performing measures)

@@ -27,8 +27,8 @@ Do not iterate on the file structure. There are no additional files or folders. 
 | ID | Agent | Purpose |
 |----|-------|---------|
 | A | **Connect PBI Model Agent** | Establishes and confirms a connection to a Power BI semantic model (local Desktop or Fabric/Service) |
-| B | **Power BI Documentation Agent** | Generates `Model_Documentation.md` — comprehensive governance audit (best-practice compliance with PASS/WARN/FAIL, unused columns, measure & description coverage, Intro table validation, model size estimation) plus full model metadata and a consolidated remediation plan |
-| C | **Power BI Health Check** | Generates `Health_Check_Report.md` — row counts, DAX validation, sensitivity labels, RLS audit |
+| B | **Power BI Documentation Agent** | Generates `Model_Documentation.md` — comprehensive governance audit (best-practice compliance with PASS/WARN/FAIL, sensitivity labels, RLS audit, unused columns, measure & description coverage, Intro table validation, model size estimation) plus full model metadata and a consolidated remediation plan |
+| C | **Power BI Health Check** | Generates `Health_Check_Report.md` — row counts, DAX validation with execution-time measurement |
 
 ---
 

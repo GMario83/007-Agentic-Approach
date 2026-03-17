@@ -147,6 +147,49 @@ Validate the model against best practices. For every check, assign a status:
 | Measure naming | Title Case, descriptive | No abbreviations without context |
 | No special characters in names | Scan all object names | Clean names (alphanumeric, spaces, underscores only) |
 
+### G. Sensitivity Label
+
+Inspect model-level metadata for sensitivity label information:
+
+```plaintext
+model_operations → operation: Get
+```
+
+Look for annotations or properties related to sensitivity labels (commonly stored as annotations with keys like `SensitivityLabelId`, `__SensitivityLabel`, or similar). Report whether a label is applied, and if so, its value.
+
+Also check database-level properties:
+
+```plaintext
+database_operations → operation: List
+```
+
+| Check | How to Validate | Expected |
+|-------|-----------------|----------|
+| Sensitivity label applied | Check model annotations / database properties for label keys | Label is present and set |
+| Label value is non-empty | Inspect label ID / name | Non-empty, valid label |
+
+### H. Row-Level Security (RLS)
+
+List all security roles defined in the model:
+
+```plaintext
+security_role_operations → operation: List
+```
+
+For each role found, list its table-level permissions and filter expressions:
+
+```plaintext
+security_role_operations → operation: ListPermissions, permissionFilter: { roleName: "<RoleName>" }
+```
+
+Record each role's name, description, model permission, and per-table filter expressions.
+
+| Check | How to Validate | Expected |
+|-------|-----------------|----------|
+| RLS roles defined | List security roles | At least one role exists (if data requires row-level restriction) |
+| Roles have filter expressions | List permissions per role | Each role has meaningful table-level filter expressions |
+| No empty / catch-all filters | Inspect filter DAX | Filters are specific, not `TRUE()` or blank |
+
 ### Audit Output Format
 
 Present results as a structured table:
@@ -400,12 +443,14 @@ After completing Steps 2–6, compute a single traffic-light status for each of 
 | 10 | **Measure Organisation** | Step 4.1 | Dedicated table + all measures in it | Table exists but some measures scattered | No dedicated measure table |
 | 11 | **Intro Table** | Step 5 | 100% fields populated | ≥ 80% fields populated | < 80% fields populated |
 | 12 | **Model Size & Cardinality** | Step 6 | 0 high-cardinality (🔴) columns | 1–3 high-cardinality columns | > 3 high-cardinality columns |
+| 13 | **Sensitivity Label** | Step 2 — Category G | Label applied and valid | *(binary — no WARN level)* | Label missing or empty |
+| 14 | **Row-Level Security** | Step 2 — Category H | Roles defined with proper filters | Roles exist but some have weak filters | No RLS roles defined (when required) |
 
 ### How to Apply
 
 1. After each step completes, evaluate the relevant KPI(s) using the thresholds above.
 2. Store each KPI's status (🟢 / 🟡 / 🔴) and a short detail string summarising the finding.
-3. In Step 7, assemble all 12 KPIs into the Executive Summary table at the top of the report.
+3. In Step 7, assemble all 14 KPIs into the Executive Summary table at the top of the report.
 4. Compute the overall counts: total 🟢, total 🟡, total 🔴.
 
 ---
@@ -442,6 +487,8 @@ Write a single markdown file named `Model_Documentation.md` into the output path
 | 10 | Measure Organisation | 🟢 / 🟡 / 🔴 | |
 | 11 | Intro Table | 🟢 / 🟡 / 🔴 | |
 | 12 | Model Size & Cardinality | 🟢 / 🟡 / 🔴 | |
+| 13 | Sensitivity Label | 🟢 / 🟡 / 🔴 | |
+| 14 | Row-Level Security | 🟢 / 🟡 / 🔴 | |
 
 **Overall: 🟢 X · 🟡 Y · 🔴 Z**
 
