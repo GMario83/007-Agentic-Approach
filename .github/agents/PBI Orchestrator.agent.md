@@ -1,8 +1,6 @@
 ---
 name: PBI Orchestrator
 description: "This agent is a dynamic planner and orchestrator for Power BI workflows. It interprets the user's intent, builds a tailored execution plan from available specialist agents (connect, document, health check, ingestion assessment), and delegates work step-by-step. Use for: documenting models, running health checks, assessing data ingestion, or any combination."
-model: Claude Sonnet 4.6 (copilot)
-agents: [Connect PBI Model Agent, Power BI Documentation Agent, Power BI Health Check, Data Ingestion Assessment Agent]
 tools: [agent, vscode/memory, read/readFile, agent/runSubagent, edit/createFile, edit/editFiles]
 ---
 

@@ -1,7 +1,6 @@
 ---
 name: Connect PBI Model Agent
 description: This custom agent is responsible for connecting to a Power BI semantic model using the MCP Server tooling. It verifies the connection, lists available models if necessary, and establishes a connection to the appropriate model before proceeding with any further tasks.
-model: Claude Sonnet 4.6 (copilot)
 tools: [vscode/memory, read/readFile, agent, 'powerbi-modeling-mcp/*']
 
 # connect Power BI MCP Server

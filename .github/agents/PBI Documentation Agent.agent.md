@@ -1,8 +1,6 @@
 ---
 name: Power BI Documentation Agent
-description: "This agent performs a comprehensive read-only governance audit and generates full documentation for a connected Power BI semantic model. It inventories all metadata, audits best practices (PASS/WARN/FAIL), identifies unused columns, validates measures and descriptions, checks the Intro table, estimates model size, and produces a single consolidated markdown artifact (named Model_Documentation - [Model Name] - [YYYY-MM-DD].md for local, or Model_Documentation - [Workspace] - [Model Name] - [YYYY-MM-DD].md for service/Fabric connections) with a prioritised remediation plan."
-argument-hint: "No arguments needed. Ensure an active connection to the Power BI model is established before running this agent."
-model: Claude Sonnet 4.6 (copilot)
+description: "This agent performs a comprehensive read-only governance audit and generates full documentation for a connected Power BI semantic model. It inventories all metadata, audits best practices (PASS/WARN/FAIL), identifies unused columns, validates measures and descriptions, checks the Intro table, estimates model size, and produces a single consolidated markdown artifact (named Model_Documentation - [Model Name] - [YYYY-MM-DD].md for local, or Model_Documentation - [Workspace] - [Model Name] - [YYYY-MM-DD].md for service/Fabric connections) with a prioritised remediation plan. No arguments needed — ensure an active connection to the Power BI model is established before running this agent."
 tools: [vscode/memory, read/readFile, agent, edit/createFile, edit/editFiles, 'powerbi-modeling-mcp/*']
 ---
 

@@ -1,8 +1,6 @@
 ---
 name: Power BI Health Check
-description: "This agent performs health checks on a connected Power BI semantic model. It collects row counts per table and validates all DAX expressions with execution-time measurement."
-argument-hint: "No arguments needed. Ensure an active connection to the Power BI model is established before running this agent (use Connect PBI Model Agent first)."
-model: Claude Sonnet 4.6 (copilot)
+description: "This agent performs health checks on a connected Power BI semantic model. It collects row counts per table and validates all DAX expressions with execution-time measurement. No arguments needed — ensure an active connection to the Power BI model is established before running this agent (use Connect PBI Model Agent first)."
 tools: [vscode/memory, read/readFile, agent, edit/createFile, edit/editFiles, 'powerbi-modeling-mcp/*']
 ---
 
