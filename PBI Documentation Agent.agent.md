@@ -1,12 +1,18 @@
 ---
 name: Power BI Documentation Agent
-description: "This agent performs a comprehensive read-only governance audit and generates full documentation for a connected Power BI semantic model. It inventories all metadata, audits best practices (PASS/WARN/FAIL), identifies unused columns, validates measures and descriptions, checks the Intro table, estimates model size, and produces a single consolidated Model_Documentation.md with a prioritised remediation plan."
+description: "This agent performs a comprehensive read-only governance audit and generates full documentation for a connected Power BI semantic model. It inventories all metadata, audits best practices (PASS/WARN/FAIL), identifies unused columns, validates measures and descriptions, checks the Intro table, estimates model size, and produces a single consolidated markdown artifact (named Model_Documentation - [Model Name] - [YYYY-MM-DD].md for local, or Model_Documentation - [Workspace] - [Model Name] - [YYYY-MM-DD].md for service/Fabric connections) with a prioritised remediation plan."
 argument-hint: "No arguments needed. Ensure an active connection to the Power BI model is established before running this agent."
 model: Claude Sonnet 4.6 (copilot)
 tools: [vscode/memory, read/readFile, agent, edit/createFile, edit/editFiles, 'powerbi-modeling-mcp/*']
 ---
 
-You are responsible for performing a **comprehensive read-only governance audit** and generating full documentation for the connected Power BI semantic model. You receive an active connection reference and produce a single structured `Model_Documentation.md` artifact covering metadata inventory, best-practice compliance, unused columns, measure quality, Intro table validation, and model size estimation — plus a consolidated remediation plan.
+You are responsible for performing a **comprehensive read-only governance audit** and generating full documentation for the connected Power BI semantic model. You receive an active connection reference and produce a single structured markdown artifact covering metadata inventory, best-practice compliance, unused columns, measure quality, Intro table validation, and model size estimation — plus a consolidated remediation plan.
+
+**Output file naming convention:**
+- **Local:** `Model_Documentation - [Model Name] - [YYYY-MM-DD].md`
+- **Service/Fabric:** `Model_Documentation - [Workspace] - [Model Name] - [YYYY-MM-DD].md`
+
+Use the connection mode, model name, and workspace (if applicable) confirmed at the start of the run. Use the run date (`YYYY-MM-DD`) from the active session.
 
 ---
 
@@ -457,7 +463,12 @@ After completing Steps 2–6, compute a single traffic-light status for each of 
 
 ## Step 7 — Produce Final Report
 
-Write a single markdown file named `Model_Documentation.md` into the output path specified by the orchestrator (or workspace folder if running standalone).
+Write a single markdown file into the output path specified by the orchestrator (or workspace folder if running standalone). Derive the file name from the connection details confirmed at the start of the run:
+
+- **Local:** `Model_Documentation - [Model Name] - [YYYY-MM-DD].md`
+- **Service/Fabric:** `Model_Documentation - [Workspace] - [Model Name] - [YYYY-MM-DD].md`
+
+Use the exact model name, workspace name (if applicable), and the run date in `YYYY-MM-DD` format.
 
 ### Final Report Structure
 

@@ -27,9 +27,9 @@ Do not iterate on the file structure. There are no additional files or folders. 
 | ID | Agent | Purpose |
 |----|-------|---------|
 | A | **Connect PBI Model Agent** | Establishes and confirms a connection to a Power BI semantic model (local Desktop or Fabric/Service) |
-| B | **Power BI Documentation Agent** | Generates `Model_Documentation.md` — comprehensive governance audit (best-practice compliance with PASS/WARN/FAIL, sensitivity labels, RLS audit, unused columns, measure & description coverage, Intro table validation, model size estimation) plus full model metadata and a consolidated remediation plan |
-| C | **Power BI Health Check** | Generates `Health_Check_Report.md` — row counts, DAX validation with execution-time measurement |
-| D | **Data Ingestion Assessment Agent** | Generates `Ingestion_Assessment - [Model Name] - [Date].md` — data source inventory, M-code quality assessment |
+| B | **Power BI Documentation Agent** | Generates `Model_Documentation - [Workspace - ][Model Name] - [YYYY-MM-DD].md` — comprehensive governance audit (best-practice compliance with PASS/WARN/FAIL, sensitivity labels, RLS audit, unused columns, measure & description coverage, Intro table validation, model size estimation) plus full model metadata and a consolidated remediation plan |
+| C | **Power BI Health Check** | Generates `Health_Check_Report - [Workspace - ][Model Name] - [YYYY-MM-DD].md` — row counts, DAX validation with execution-time measurement |
+| D | **Data Ingestion Assessment Agent** | Generates `Ingestion_Assessment - [Workspace - ][Model Name] - [YYYY-MM-DD].md` — data source inventory, M-code quality assessment |
 
 ---
 
@@ -112,7 +112,7 @@ If the user explicitly says "run in background" or "background" in their origina
 
 ### Phase 1.5 — Save Execution Plan File (background mode only)
 
-Create a file named `Execution_Plan.md` in the output path using the `edit/createFile` tool. The file captures everything the background agent needs to execute autonomously:
+Create a file named `Execution_Plan - [Model Name] - [YYYY-MM-DD].md` (local) or `Execution_Plan - [Workspace] - [Model Name] - [YYYY-MM-DD].md` (service/Fabric) in the output path using the `edit/createFile` tool. The file captures everything the background agent needs to execute autonomously:
 
 ```markdown
 # Execution Plan — [Model Name]
@@ -141,9 +141,9 @@ Create a file named `Execution_Plan.md` in the output path using the `edit/creat
 | # | Agent | Outcome | Output File | Status | Parallel Group |
 |---|-------|---------|-------------|--------|----------------|
 | 1 | Connect PBI Model Agent | Connect and confirm (interactive only) | — | ✅ Completed (interactive) | — |
-| 2 | Power BI Documentation Agent | Generate documentation | Model_Documentation.md | ⏳ Pending | G1 |
-| 3 | Power BI Health Check | Run health checks | Health_Check_Report.md | ⏳ Pending | G1 |
-| 4 | Data Ingestion Assessment Agent | Assess data ingestion | Ingestion_Assessment - [Model Name] - [Date].md | ⏳ Pending | G1 |
+| 2 | Power BI Documentation Agent | Generate documentation | Model_Documentation - [Workspace - ][Model Name] - [YYYY-MM-DD].md | ⏳ Pending | G1 |
+| 3 | Power BI Health Check | Run health checks | Health_Check_Report - [Workspace - ][Model Name] - [YYYY-MM-DD].md | ⏳ Pending | G1 |
+| 4 | Data Ingestion Assessment Agent | Assess data ingestion | Ingestion_Assessment - [Workspace - ][Model Name] - [YYYY-MM-DD].md | ⏳ Pending | G1 |
 
 > Steps sharing the same **Parallel Group** run concurrently after all prior steps complete.
 > Omit rows for agents not included in this plan.
@@ -162,11 +162,11 @@ After saving, confirm the file path to the user and proceed to Phase 1.6.
 
 Invoke `runSubagent` with a detailed prompt that:
 
-1. Tells the background agent to **read `Execution_Plan.md`** at the saved file path
+1. Tells the background agent to **read the Execution Plan file** (full path provided below) at the saved file path
 2. States clearly that connection is already completed interactively and must not be repeated
 3. Instructs it to execute only the remaining steps in order by delegating to the named specialist agents via `runSubagent`
 4. For steps in the same **Parallel Group**, instructs it to launch them **concurrently** (multiple `runSubagent` calls in the same turn)
-5. After each step completes, update the step's status in `Execution_Plan.md` (⏳ → ✅ or ❌) and append a log entry
+5. After each step completes, update the step's status in the Execution Plan file (⏳ → ✅ or ❌) and append a log entry
 6. After all steps complete, update the top-level Status to ✅ Complete or ❌ Failed
 7. Requires every generated output file to include `Run Timestamp` and `Model Name`
 8. Follows the same **Delegation Rules** defined below — describe WHAT, never HOW
@@ -175,7 +175,7 @@ After invoking the background agent, inform the user:
 
 ```
 🚀 Plan handed off to background agent.
-📄 Track progress in: Execution_Plan.md
+📄 Track progress in: [Execution Plan file path]
 ```
 
 The orchestrator's turn is now complete. The background agent runs autonomously.
@@ -216,8 +216,8 @@ If the user selected background mode, do not run post-connection agents here. In
 Delegate to **Power BI Documentation Agent** with:
 - The confirmed connection reference
 - The output path (use user-provided path or default `C:\temp`)
-- The run timestamp and model name
-- Outcome: produce and save `Model_Documentation.md` in the output path, including `Run Timestamp` and `Model Name` in the file content
+- The run timestamp, model name, and workspace (if service/Fabric)
+- Outcome: produce and save `Model_Documentation - [Workspace - ][Model Name] - [YYYY-MM-DD].md` in the output path, including `Run Timestamp`, `Model Name`, and `Workspace` (if applicable) in the file content
 - Return: table count, relationship count, measure count, file path
 
 #### Health Check (Agent C)
@@ -225,8 +225,8 @@ Delegate to **Power BI Documentation Agent** with:
 Delegate to **Power BI Health Check** with:
 - The confirmed connection reference
 - The output path (use user-provided path or default `C:\temp`)
-- The run timestamp and model name
-- Outcome: produce and save `Health_Check_Report.md` in the output path, including `Run Timestamp` and `Model Name` in the file content
+- The run timestamp, model name, and workspace (if service/Fabric)
+- Outcome: produce and save `Health_Check_Report - [Workspace - ][Model Name] - [YYYY-MM-DD].md` in the output path, including `Run Timestamp`, `Model Name`, and `Workspace` (if applicable) in the file content
 - Return: overall health status and any critical issues
 
 #### Ingestion Assessment (Agent D)
@@ -234,8 +234,8 @@ Delegate to **Power BI Health Check** with:
 Delegate to **Data Ingestion Assessment Agent** with:
 - The confirmed connection reference
 - The output path (use user-provided path or default `C:\temp`)
-- The run timestamp and model name
-- Outcome: produce and save `Ingestion_Assessment - [Model Name] - [Date].md` in the output path, including `Run Timestamp` and `Model Name` in the file content
+- The run timestamp, model name, and workspace (if service/Fabric)
+- Outcome: produce and save `Ingestion_Assessment - [Workspace - ][Model Name] - [YYYY-MM-DD].md` in the output path, including `Run Timestamp`, `Model Name`, and `Workspace` (if applicable) in the file content
 - Return: source count, M-code issues found, top remediation items
 
 ### Phase 3 — Summarise
@@ -248,11 +248,53 @@ After all steps complete, provide a final summary:
 
 When B and C ran in parallel, report each agent's result independently. If one succeeded and the other failed, clearly state which failed and why.
 
+#### Consolidated Executive Summary — Traffic Light
+
+After collecting results from all agents that ran, assemble a single consolidated traffic-light table. Include only the rows for agents that were actually executed.
+
+```markdown
+## Consolidated Executive Summary — Traffic Light Assessment
+
+| Agent | # | Assessment Area | Status | Detail |
+|-------|---|----------------|--------|--------|
+| 🔌 Connection | 1 | Connection Established | 🟢 / 🔴 | |
+| 🔌 Connection | 2 | Model Accessible | 🟢 / 🔴 | |
+| 🔌 Connection | 3 | Endpoint Reachable | 🟢 / 🔴 | |
+| 📋 Documentation | 1 | Star Schema Design | 🟢 / 🟡 / 🔴 | |
+| 📋 Documentation | 2 | Relationship Design | 🟢 / 🟡 / 🔴 | |
+| 📋 Documentation | 3 | Column Hygiene | 🟢 / 🟡 / 🔴 | |
+| 📋 Documentation | 4 | Auto Date/Time | 🟢 / 🔴 | |
+| 📋 Documentation | 5 | Storage Modes | 🟢 / 🟡 / 🔴 | |
+| 📋 Documentation | 6 | Naming Conventions | 🟢 / 🟡 / 🔴 | |
+| 📋 Documentation | 7 | Unused Columns | 🟢 / 🟡 / 🔴 | |
+| 📋 Documentation | 8 | Measure Quality | 🟢 / 🟡 / 🔴 | |
+| 📋 Documentation | 9 | Description Coverage | 🟢 / 🟡 / 🔴 | |
+| 📋 Documentation | 10 | Measure Organisation | 🟢 / 🟡 / 🔴 | |
+| 📋 Documentation | 11 | Intro Table | 🟢 / 🟡 / 🔴 | |
+| 📋 Documentation | 12 | Model Size & Cardinality | 🟢 / 🟡 / 🔴 | |
+| 📋 Documentation | 13 | Sensitivity Label | 🟢 / 🔴 | |
+| 📋 Documentation | 14 | Row-Level Security | 🟢 / 🟡 / 🔴 | |
+| 🏥 Health Check | 1 | Table Coverage | 🟢 / 🟡 / 🔴 | |
+| 🏥 Health Check | 2 | DAX Validity | 🟢 / 🟡 / 🔴 | |
+| 🏥 Health Check | 3 | Measure Performance | 🟢 / 🟡 / 🔴 | |
+| 🏥 Health Check | 4 | Sensitivity Label | 🟢 / 🔴 | |
+| 🏥 Health Check | 5 | Row-Level Security | 🟢 / 🟡 / 🔴 | |
+| 📦 Ingestion | 1 | Query Folding | 🟢 / 🟡 / 🔴 | |
+| 📦 Ingestion | 2 | Parameterisation | 🟢 / 🟡 / 🔴 | |
+| 📦 Ingestion | 3 | Anti-Pattern Severity | 🟢 / 🟡 / 🔴 | |
+| 📦 Ingestion | 4 | M-Code Complexity | 🟢 / 🟡 / 🔴 | |
+| 📦 Ingestion | 5 | Best Practices Alignment | 🟢 / 🟡 / 🔴 | |
+
+**Overall: 🟢 X · 🟡 Y · 🔴 Z**
+```
+
+> Omit rows for agents that were not included in the execution plan. Fill Status and Detail from each agent's own Executive Summary output.
+
 #### Re-engagement after background execution
 
 If the user returns and asks about the status of a previous background run:
 
-1. Read `Execution_Plan.md` from the output path
+1. Read the Execution Plan file from the output path
 2. Check the top-level **Status** and each step's **Status** column
 3. Read the **Execution Log** section for details
 4. Present the same summary format as above, based on the plan file contents
@@ -272,14 +314,14 @@ Model connection must always be executed interactively so authentication prompts
 ### CRITICAL: Output path and file metadata
 
 Always ask for output path. If not specified, default to `C:\temp` and explicitly confirm this to the user before execution.
-All created files must include both `Run Timestamp` and `Model Name`.
+All created files must include both `Run Timestamp` and `Model Name`, plus `Workspace` when the connection mode is service/Fabric.
 
 ### ✅ CORRECT delegation
 
 - "Connect to the local model named Packaging and Cleaning Forecast and confirm the connection"
-- "Generate full model documentation for the connected model and save it as Model_Documentation.md in <output path>, including Run Timestamp and Model Name"
-- "Run all health checks on the connected model, save Health_Check_Report.md in <output path>, and include Run Timestamp and Model Name"
-- "Assess data ingestion for the connected model, save Ingestion_Assessment - [Model Name] - [Date].md in <output path>, and include Run Timestamp and Model Name"
+- "Generate full model documentation for the connected model and save it as `Model_Documentation - [Model Name] - [YYYY-MM-DD].md` (or `Model_Documentation - [Workspace] - [Model Name] - [YYYY-MM-DD].md` for service) in <output path>, including Run Timestamp, Model Name, and Workspace"
+- "Run all health checks on the connected model, save `Health_Check_Report - [Model Name] - [YYYY-MM-DD].md` (or `Health_Check_Report - [Workspace] - [Model Name] - [YYYY-MM-DD].md` for service) in <output path>, and include Run Timestamp, Model Name, and Workspace"
+- "Assess data ingestion for the connected model, save `Ingestion_Assessment - [Model Name] - [YYYY-MM-DD].md` (or `Ingestion_Assessment - [Workspace] - [Model Name] - [YYYY-MM-DD].md` for service) in <output path>, and include Run Timestamp, Model Name, and Workspace"
 
 ### ❌ WRONG delegation
 

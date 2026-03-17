@@ -68,7 +68,12 @@ For every measure that passes validation, execute the DAX query and measure the 
 
 ## Output Format
 
-Produce a markdown file named `Health_Check_Report.md` in the project workspace folder, structured as follows:
+Produce a markdown file in the output path. Derive the file name from the connection details:
+
+- **Local:** `Health_Check_Report - [Model Name] - [YYYY-MM-DD].md`
+- **Service/Fabric:** `Health_Check_Report - [Workspace] - [Model Name] - [YYYY-MM-DD].md`
+
+Use the exact model name, workspace name (if applicable), and the run date in `YYYY-MM-DD` format. The file is structured as follows:
 
 ```markdown
 # Power BI Health Check Report — [Model Name]
@@ -76,6 +81,20 @@ Produce a markdown file named `Health_Check_Report.md` in the project workspace 
 > **Generated:** [date]
 > **Connection Mode:** [local / service]
 > **Model / Session:** [session name]
+
+---
+
+## Executive Summary — Traffic Light Assessment
+
+| # | Assessment Area | Status | Detail |
+|---|----------------|--------|--------|
+| 1 | Table Coverage | 🟢 / 🟡 / 🔴 | (one-line finding summary) |
+| 2 | DAX Validity | 🟢 / 🟡 / 🔴 | |
+| 3 | Measure Performance | 🟢 / 🟡 / 🔴 | |
+| 4 | Sensitivity Label | 🟢 / 🔴 | |
+| 5 | Row-Level Security | 🟢 / 🟡 / 🔴 | |
+
+**Overall: 🟢 X · 🟡 Y · 🔴 Z**
 
 ---
 
@@ -138,9 +157,31 @@ Produce a markdown file named `Health_Check_Report.md` in the project workspace 
 
 ---
 
+## Traffic Light KPI — Derivation Rules
+
+After completing Steps 1–4, evaluate each KPI below and assign a traffic-light status. These form the **Executive Summary** placed at the top of the final report.
+
+| # | KPI Area | Source | 🟢 Green | 🟡 Yellow (At Risk) | 🔴 Red (Action Needed) |
+|---|----------|--------|----------|---------------------|------------------------|
+| 1 | **Table Coverage** | Step 1 — Row Counts | All tables have data (row count > 0) | 1–10% of tables are empty | > 10% of tables are empty |
+| 2 | **DAX Validity** | Step 2 — Validation | All measures pass validation | 1–4 measures failing | ≥ 5 measures failing or > 5% of total measures |
+| 3 | **Measure Performance** | Step 2 — Execution Timing | No measures exceed 1 000 ms | 1–3 measures exceed 1 000 ms; none critical | Any measure exceeds 5 000 ms (🔴 Critical) |
+| 4 | **Sensitivity Label** | Step 3 | Label applied and valid | *(binary — no WARN level)* | Label missing or empty |
+| 5 | **Row-Level Security** | Step 4 | Roles defined with proper filter expressions | Roles exist but some have empty or `TRUE()` filters | No RLS roles defined (when data requires row-level restriction) |
+
+### How to Apply
+
+1. After each step completes, evaluate the relevant KPI(s) using the thresholds above.
+2. Store each KPI's status (🟢 / 🟡 / 🔴) and a short detail string summarising the finding.
+3. In the Output step, assemble all 5 KPIs into the Executive Summary table at the top of the report.
+4. Compute the overall counts: total 🟢, total 🟡, total 🔴.
+
+---
+
 ## Return Summary
 
 After writing the report, return:
 - File path of the saved health-check report
+- **Traffic light overview:** 🟢 X · 🟡 Y · 🔴 Z (from Executive Summary)
 - One-line overall status (e.g., "2/3 checks passed — see report for details")
 - List of any critical issues found (including slow-performing measures)

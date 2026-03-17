@@ -194,7 +194,12 @@ Cross-reference findings with the Best Practices guide:
 
 ## Output Format
 
-Produce a markdown file named `Ingestion_Assessment - [Model Name] - [Date].md` in the output path, structured as follows:
+Produce a markdown file in the output path. Derive the file name from the connection details:
+
+- **Local:** `Ingestion_Assessment - [Model Name] - [YYYY-MM-DD].md`
+- **Service/Fabric:** `Ingestion_Assessment - [Workspace] - [Model Name] - [YYYY-MM-DD].md`
+
+Use the exact model name, workspace name (if applicable), and the run date in `YYYY-MM-DD` format. The file is structured as follows:
 
 ```markdown
 # Data Ingestion Assessment — [Model Name]
@@ -204,6 +209,20 @@ Produce a markdown file named `Ingestion_Assessment - [Model Name] - [Date].md` 
 > **Connection Mode:** [local / service]
 > **Model / Session:** [session name]
 > **Mode:** Read-Only Assessment — no changes applied
+
+---
+
+## Executive Summary — Traffic Light Assessment
+
+| # | Assessment Area | Status | Detail |
+|---|----------------|--------|--------|
+| 1 | Query Folding | 🟢 / 🟡 / 🔴 | (one-line finding summary) |
+| 2 | Parameterisation | 🟢 / 🟡 / 🔴 | |
+| 3 | Anti-Pattern Severity | 🟢 / 🟡 / 🔴 | |
+| 4 | M-Code Complexity | 🟢 / 🟡 / 🔴 | |
+| 5 | Best Practices Alignment | 🟢 / 🟡 / 🔴 | |
+
+**Overall: 🟢 X · 🟡 Y · 🔴 Z**
 
 ---
 
@@ -286,11 +305,33 @@ Produce a markdown file named `Ingestion_Assessment - [Model Name] - [Date].md` 
 
 ---
 
+## Traffic Light KPI — Derivation Rules
+
+After completing Steps 1–2, evaluate each KPI below and assign a traffic-light status. These form the **Executive Summary** placed at the top of the final report.
+
+| # | KPI Area | Source | 🟢 Green | 🟡 Yellow (At Risk) | 🔴 Red (Action Needed) |
+|---|----------|--------|----------|---------------------|------------------------|
+| 1 | **Query Folding** | Step 2.2 | All foldable sources have no fold-breaking steps | Potential fold breaks detected (⚠️) in any query | Confirmed fold breaks (❌) in any query |
+| 2 | **Parameterisation** | Step 2.3 | All environment values (servers, paths, databases) use parameters | 1–2 hardcoded environment values found | ≥ 3 hardcoded environment values found |
+| 3 | **Anti-Pattern Severity** | Step 2.3 | No anti-pattern issues found | Only INFO / WARN-severity issues | Any FAIL-severity issue |
+| 4 | **M-Code Complexity** | Step 2.1 | All queries have ≤ 15 steps | 1–2 queries exceed 15 steps | > 2 queries exceed 15 steps |
+| 5 | **Best Practices Alignment** | Step 2.4 | All checks PASS | Any WARN, no FAIL | Any FAIL |
+
+### How to Apply
+
+1. After each step completes, evaluate the relevant KPI(s) using the thresholds above.
+2. Store each KPI’s status (🟢 / 🟡 / 🔴) and a short detail string summarising the finding.
+3. In the Output step, assemble all 5 KPIs into the Executive Summary table at the top of the report.
+4. Compute the overall counts: total 🟢, total 🟡, total 🔴.
+
+---
+
 ## Return Summary
 
 After writing the report, return:
 - File path of the saved ingestion-assessment report
-- One-line overall status (e.g., "2 sources, 3 M-code issues found — see report for details")
+- **Traffic light overview:** 🟢 X · 🟡 Y · 🔴 Z (from Executive Summary)
+- One-line overall status (e.g., “2 sources, 3 M-code issues found — see report for details”)
 - Total unique sources and source kinds
 - Total anti-pattern issues by severity (FAIL / WARN / INFO)
 - Top 3 priority remediation items

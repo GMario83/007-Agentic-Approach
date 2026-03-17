@@ -41,4 +41,44 @@ manage_model_connection → operation: get_current  (confirm)
 
 ```
 
+---
+
+## Traffic Light KPI — Derivation Rules
+
+After confirming the connection, evaluate the three checks below and assign a traffic-light status. There is no yellow / at-risk level for connection checks — the result is binary.
+
+| # | KPI Area | 🟢 Green | 🔴 Red (Action Needed) |
+|---|----------|----------|------------------------|
+| 1 | **Connection Established** | `get_current` returns a valid, active model reference | Connection fails, times out, or returns no active session |
+| 2 | **Model Accessible** | Target model name matches the expected model | Model not found in the list; wrong model connected |
+| 3 | **Endpoint Reachable** | Confirm call succeeds with no error; session ID / port is present | Error returned on confirm call; session cannot be verified |
+
+### How to Apply
+
+1. After each check, assign 🟢 or 🔴 and record a one-line detail.
+2. Assemble all three into the Executive Summary below before returning.
+
+---
+
+## Return Summary
+
+After confirming the connection, return the following executive summary:
+
+```markdown
+## Executive Summary — Connection Status
+
+| # | Check | Status | Detail |
+|---|-------|--------|--------|
+| 1 | Connection Established | 🟢 / 🔴 | (e.g., "Active session confirmed on port 12345") |
+| 2 | Model Accessible | 🟢 / 🔴 | (e.g., "Connected to 'Packaging and Cleaning Forecast'") |
+| 3 | Endpoint Reachable | 🟢 / 🔴 | (e.g., "get_current returned valid model reference") |
+
+**Overall: 🟢 X · 🔴 Z**
+```
+
+Also return:
+- **Model Name**
+- **Connection Mode** — `local` or `service`
+- **Connection ID / port reference**
+
 
