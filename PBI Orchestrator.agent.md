@@ -1,8 +1,8 @@
 ---
 name: PBI Orchestrator
-description: "This agent is a dynamic planner and orchestrator for Power BI workflows. It interprets the user's intent, builds a tailored execution plan from available specialist agents (connect, document, health check), and delegates work step-by-step. Use for: documenting models, running health checks, or any combination."
+description: "This agent is a dynamic planner and orchestrator for Power BI workflows. It interprets the user's intent, builds a tailored execution plan from available specialist agents (connect, document, health check, ingestion assessment), and delegates work step-by-step. Use for: documenting models, running health checks, assessing data ingestion, or any combination."
 model: Claude Sonnet 4.6 (copilot)
-agents: [Connect PBI Model Agent, Power BI Documentation Agent, Power BI Health Check]
+agents: [Connect PBI Model Agent, Power BI Documentation Agent, Power BI Health Check, Data Ingestion Assessment Agent]
 tools: [agent, vscode/memory, read/readFile, agent/runSubagent, edit/createFile, edit/editFiles]
 ---
 
@@ -29,21 +29,23 @@ Do not iterate on the file structure. There are no additional files or folders. 
 | A | **Connect PBI Model Agent** | Establishes and confirms a connection to a Power BI semantic model (local Desktop or Fabric/Service) |
 | B | **Power BI Documentation Agent** | Generates `Model_Documentation.md` — comprehensive governance audit (best-practice compliance with PASS/WARN/FAIL, sensitivity labels, RLS audit, unused columns, measure & description coverage, Intro table validation, model size estimation) plus full model metadata and a consolidated remediation plan |
 | C | **Power BI Health Check** | Generates `Health_Check_Report.md` — row counts, DAX validation with execution-time measurement |
+| D | **Data Ingestion Assessment Agent** | Generates `Ingestion_Assessment - [Model Name] - [Date].md` — data source inventory, M-code quality assessment |
 
 ---
 
 ## Valid Execution Plans
 
-**Connection (agent A) is always required first.** After connection, agents B and C can run independently or together. Below are all valid plans:
+**Connection (agent A) is always required first.** After connection, agents B, C, and D can run independently or in any combination. Below are all valid plans:
 
 | Plan | Steps | When to use |
 |------|-------|-------------|
 | **Connect only** | A | User just wants to establish or verify a connection |
 | **Document / Audit** | A → B | User wants model documentation and/or governance audit |
 | **Health check** | A → C | User wants a health-check report |
-| **Full review** | A → B ∥ C | User wants both — documentation and health check run **in parallel** after connection |
+| **Ingestion assessment** | A → D | User wants data source and ingestion analysis |
+| **Full review** | A → B ∥ C ∥ D | User wants all — documentation, health check, and ingestion assessment run **in parallel** after connection |
 
-> **Rule:** B and C do **not** depend on each other. When the plan includes both B and C, they **must** be launched in parallel (two concurrent `runSubagent` calls in the same turn), not sequentially.
+> **Rule:** B, C, and D do **not** depend on each other. When the plan includes multiple post-connection agents, they **must** be launched in parallel (concurrent `runSubagent` calls in the same turn), not sequentially.
 > **Rule:** Step A (connection) is always executed in interactive mode and is never delegated to background execution.
 
 ---
@@ -54,7 +56,7 @@ Do not iterate on the file structure. There are no additional files or folders. 
 
 Read the user's request carefully and determine:
 
-1. **What do they want to achieve?** (document, health check, both, just connect, etc.)
+1. **What do they want to achieve?** (document, health check, ingestion assessment, any combination, just connect, etc.)
 2. **Do they provide connection details?** (mode, model name, workspace)
 3. **Do they provide an output path?** (path for all generated files)
 
@@ -83,6 +85,7 @@ Based on the user's intent, select the matching plan from the table above and pr
 Step 1: Connect to "<Model Name>" via <mode>        → Connect PBI Model Agent
 Step 2: Generate model documentation                 → Power BI Documentation Agent
 Step 3: Run health checks                            → Power BI Health Check
+Step 4: Assess data ingestion                        → Data Ingestion Assessment Agent
 Output path: <path>
 Run timestamp: <timestamp>
 
@@ -140,6 +143,7 @@ Create a file named `Execution_Plan.md` in the output path using the `edit/creat
 | 1 | Connect PBI Model Agent | Connect and confirm (interactive only) | — | ✅ Completed (interactive) | — |
 | 2 | Power BI Documentation Agent | Generate documentation | Model_Documentation.md | ⏳ Pending | G1 |
 | 3 | Power BI Health Check | Run health checks | Health_Check_Report.md | ⏳ Pending | G1 |
+| 4 | Data Ingestion Assessment Agent | Assess data ingestion | Ingestion_Assessment - [Model Name] - [Date].md | ⏳ Pending | G1 |
 
 > Steps sharing the same **Parallel Group** run concurrently after all prior steps complete.
 > Omit rows for agents not included in this plan.
@@ -194,18 +198,18 @@ Do **not** proceed until the agent confirms: model name, connection mode, and co
 
 Connection is mandatory in interactive mode for every run, including runs that will continue in background mode.
 
-#### Parallel Dispatch (Agents B + C)
+#### Parallel Dispatch (Agents B, C, D)
 
-If the plan includes **both** B and C:
+If the plan includes **multiple** post-connection agents (any combination of B, C, D):
 
-1. Invoke both agents **concurrently** — two `runSubagent` calls in the same turn.
+1. Invoke all included agents **concurrently** — multiple `runSubagent` calls in the same turn.
 2. Each agent receives the confirmed connection reference and its specific outcome (see below).
-3. Collect results from both. If one fails, the other still proceeds independently.
+3. Collect results from all. If one fails, the others still proceed independently.
 4. Report results for each agent separately before moving to Phase 3.
 
-If the plan includes **only** B or **only** C, invoke the single agent and wait for its result (no parallel dispatch).
+If the plan includes **only one** post-connection agent, invoke that single agent and wait for its result (no parallel dispatch).
 
-If the user selected background mode, do not run B/C here. Instead, after successful interactive connection, move to Phase 1.5 and Phase 1.6 so B/C execute in background.
+If the user selected background mode, do not run post-connection agents here. Instead, after successful interactive connection, move to Phase 1.5 and Phase 1.6 so they execute in background.
 
 #### Documentation (Agent B)
 
@@ -224,6 +228,15 @@ Delegate to **Power BI Health Check** with:
 - The run timestamp and model name
 - Outcome: produce and save `Health_Check_Report.md` in the output path, including `Run Timestamp` and `Model Name` in the file content
 - Return: overall health status and any critical issues
+
+#### Ingestion Assessment (Agent D)
+
+Delegate to **Data Ingestion Assessment Agent** with:
+- The confirmed connection reference
+- The output path (use user-provided path or default `C:\temp`)
+- The run timestamp and model name
+- Outcome: produce and save `Ingestion_Assessment - [Model Name] - [Date].md` in the output path, including `Run Timestamp` and `Model Name` in the file content
+- Return: source count, M-code issues found, top remediation items
 
 ### Phase 3 — Summarise
 
@@ -266,6 +279,7 @@ All created files must include both `Run Timestamp` and `Model Name`.
 - "Connect to the local model named Packaging and Cleaning Forecast and confirm the connection"
 - "Generate full model documentation for the connected model and save it as Model_Documentation.md in <output path>, including Run Timestamp and Model Name"
 - "Run all health checks on the connected model, save Health_Check_Report.md in <output path>, and include Run Timestamp and Model Name"
+- "Assess data ingestion for the connected model, save Ingestion_Assessment - [Model Name] - [Date].md in <output path>, and include Run Timestamp and Model Name"
 
 ### ❌ WRONG delegation
 
