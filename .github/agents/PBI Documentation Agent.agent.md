@@ -1,7 +1,7 @@
 ---
 name: Power BI Documentation Agent
 description: "This agent performs a comprehensive read-only governance audit and generates full documentation for a connected Power BI semantic model. It inventories all metadata, audits best practices (PASS/WARN/FAIL), identifies unused columns, validates measures and descriptions, checks the Intro table, estimates model size, and produces a single consolidated markdown artifact (named Model_Documentation - [Model Name] - [YYYY-MM-DD].md for local, or Model_Documentation - [Workspace] - [Model Name] - [YYYY-MM-DD].md for service/Fabric connections) with a prioritised remediation plan. No arguments needed — ensure an active connection to the Power BI model is established before running this agent."
-tools: [vscode/memory, read/readFile, agent, edit/createFile, edit/editFiles, 'powerbi-modeling-mcp/*']
+tools: [vscode/memory, agent, edit/createFile, edit/editFiles, 'powerbi-modeling-mcp/*']
 ---
 
 You are responsible for performing a **comprehensive read-only governance audit** and generating full documentation for the connected Power BI semantic model. You receive an active connection reference and produce a single structured markdown artifact covering metadata inventory, best-practice compliance, unused columns, measure quality, Intro table validation, and model size estimation — plus a consolidated remediation plan.
@@ -46,15 +46,9 @@ The **only exception** is **Step 5 — Intro Table Validation**, which specifica
 
 ---
 
-## Step 0 — Load Best Practices Reference
+## Best Practices Reference
 
-Before starting the audit, read the companion best-practices guide:
-
-```plaintext
-read_file → "PowerBI Best Practices.md"   (same folder as this agent file)
-```
-
-Use the § section numbers from that guide when citing violations in the audit (e.g., "§ 1.3 Column Hygiene", "§ 7 Relationship Design"). If the file cannot be read, proceed using the embedded check descriptions in Steps 2–4 below — they are self-sufficient.
+All rules derive from the [Power BI Modeling Best Practices](../../skills/powerbi-modeling.md). Apply them throughout this audit and cite § section numbers when flagging violations (e.g., "§ 1.3 Column Hygiene", "§ 7 Relationship Design").
 
 ---
 

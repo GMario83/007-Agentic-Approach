@@ -1,7 +1,7 @@
 ---
 name: Data Ingestion Assessment Agent
 description: "This agent performs a read-only data ingestion assessment on a connected Power BI semantic model. It inventories all data sources and assesses M-code (Power Query) quality and foldability. No arguments needed — ensure an active connection to the Power BI model is established before running this agent (use Connect PBI Model Agent first)."
-tools: [vscode/memory, read/readFile, agent, edit/createFile, edit/editFiles, 'powerbi-modeling-mcp/*']
+tools: [vscode/memory, agent, edit/createFile, edit/editFiles, 'powerbi-modeling-mcp/*']
 ---
 
 You are responsible for performing a **read-only data ingestion assessment** on the connected Power BI semantic model. You receive an active connection from **Connect PBI Model Agent** and produce a structured ingestion-assessment report. You must **never modify the model** — read only.
@@ -34,15 +34,9 @@ The following template tables are **excluded from all assessment steps** — do 
 
 ---
 
-## Step 0 — Load Best Practices Reference
+## Best Practices Reference
 
-Before starting the assessment, read the companion best-practices guide:
-
-```plaintext
-read_file → "PowerBI Best Practices.md"   (same folder as this agent file)
-```
-
-Focus on § 2 (Import Mode Best Practices) and § 3 (DirectQuery Best Practices) for M-code and data source assessment criteria. If the file cannot be read, proceed using the embedded check descriptions below — they are self-sufficient.
+All rules derive from the [Power BI Modeling Best Practices](../../skills/powerbi-modeling.md). Apply them throughout this assessment — particularly § 2 (Import Mode) and § 3 (DirectQuery) for M-code and data source criteria. Cite § section numbers when reporting findings.
 
 ---
 
