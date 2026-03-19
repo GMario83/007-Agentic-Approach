@@ -1,0 +1,102 @@
+flowchart TD
+    START([🎯 User Request]) --> ORCH[🧠 PBI Orchestrator\nPhase 0 — Understand Intent]
+
+    ORCH --> IS_BATCH{Batch\nrequest?}
+
+    %% ── Single-Model Paths ──
+    IS_BATCH -- No --> PLAN_SINGLE[📋 Phase 1 — Present Plan\nAsk execution mode]
+    PLAN_SINGLE --> EXEC_MODE{Execution\nMode?}
+
+    EXEC_MODE -- Interactive --> CONNECT_I[🔌 Agent A\nConnect PBI Model Agent\nInteractive auth]
+
+    CONNECT_I --> SCOPE{Which agents\nneeded?}
+
+    SCOPE -- Connect only --> DONE_CONNECT[✅ Connection confirmed\nPhase 3 Summary]
+
+    SCOPE -- Document only --> DOC[📋 Agent B\nDocumentation Agent]
+    DOC --> SUM_B[📄 Model_Documentation .md]
+
+    SCOPE -- Health check only --> HC[🏥 Agent C\nHealth Check]
+    HC --> SUM_C[📄 Health_Check_Report .md]
+
+    SCOPE -- Ingestion only --> ING[📦 Agent D\nIngestion Assessment]
+    ING --> SUM_D[📄 Ingestion_Assessment .md]
+
+    SCOPE -- Doc + Health --> PAR_BC[⚡ Parallel: B ∥ C]
+    PAR_BC --> DOC2[📋 Agent B] & HC2[🏥 Agent C]
+    DOC2 --> SUM_BC1[📄 Model_Documentation .md]
+    HC2 --> SUM_BC2[📄 Health_Check_Report .md]
+    SUM_BC1 & SUM_BC2 --> MERGE_BC[Phase 3 — Consolidated Summary]
+
+    SCOPE -- Doc + Ingestion --> PAR_BD[⚡ Parallel: B ∥ D]
+    PAR_BD --> DOC3[📋 Agent B] & ING3[📦 Agent D]
+    DOC3 --> SUM_BD1[📄 Model_Documentation .md]
+    ING3 --> SUM_BD2[📄 Ingestion_Assessment .md]
+    SUM_BD1 & SUM_BD2 --> MERGE_BD[Phase 3 — Consolidated Summary]
+
+    SCOPE -- Health + Ingestion --> PAR_CD[⚡ Parallel: C ∥ D]
+    PAR_CD --> HC4[🏥 Agent C] & ING4[📦 Agent D]
+    HC4 --> SUM_CD1[📄 Health_Check_Report .md]
+    ING4 --> SUM_CD2[📄 Ingestion_Assessment .md]
+    SUM_CD1 & SUM_CD2 --> MERGE_CD[Phase 3 — Consolidated Summary]
+
+    SCOPE -- "Full review (all three)" --> PAR_BCD[⚡ Parallel: B ∥ C ∥ D]
+    PAR_BCD --> DOC5[📋 Agent B] & HC5[🏥 Agent C] & ING5[📦 Agent D]
+    DOC5 --> SUM_F1[📄 Model_Documentation .md]
+    HC5 --> SUM_F2[📄 Health_Check_Report .md]
+    ING5 --> SUM_F3[📄 Ingestion_Assessment .md]
+    SUM_F1 & SUM_F2 & SUM_F3 --> MERGE_FULL[Phase 3 — Consolidated Summary\n🟢🟡🔴 Traffic Light]
+
+    SUM_B & SUM_C & SUM_D --> MERGE_SINGLE[Phase 3 — Consolidated Summary\n🟢🟡🔴 Traffic Light]
+
+    %% ── Background Mode ──
+    EXEC_MODE -- Background --> CONNECT_BG[🔌 Agent A\nConnect PBI Model Agent\nInteractive auth]
+    CONNECT_BG --> SAVE_PLAN[📄 Phase 1.5\nSave Execution Plan file]
+    SAVE_PLAN --> HANDOFF[🚀 Phase 1.6\nBackground Handoff\nrunSubagent autonomous]
+    HANDOFF --> BG_AGENTS[Background agent executes\nremaining B / C / D\nin parallel]
+    BG_AGENTS --> BG_UPDATE[Updates Execution Plan\n⏳ → ✅ / ❌]
+
+    %% ── Batch Path ──
+    IS_BATCH -- Yes --> PLAN_BATCH[📋 Phase 1 — Present Batch Plan\nAsk for workspace + SQL write-back]
+    PLAN_BATCH --> BATCH_MODE{Execution\nMode?}
+
+    BATCH_MODE -- Interactive --> BATCH_E[📦 Agent E\nBatch Documentation Agent]
+    BATCH_E --> ENUM[Step 1 — Enumerate models\nUser selects opt-in]
+    ENUM --> LOOP[Step 2 — Sequential loop\nFor each selected model:]
+    LOOP --> LOOP_CONNECT[Connect to model]
+    LOOP_CONNECT --> LOOP_DOC[Delegate to Agent B\nDocumentation audit]
+    LOOP_DOC --> LOOP_CAPTURE[Capture KPIs + results]
+    LOOP_CAPTURE --> MORE{More\nmodels?}
+    MORE -- Yes --> LOOP
+    MORE -- No --> BATCH_SUM[Step 3 — Batch Summary\n📄 Batch_Documentation_Summary .md\nCross-model patterns]
+    BATCH_SUM --> SQL{SQL\nwrite-back?}
+    SQL -- Yes --> SQL_WRITE[Step 4 — MERGE to\nFabric SQL via MSSQL]
+    SQL -- No --> BATCH_DONE[Phase 3 — Batch Summary\n🟢🟡🔴 per model]
+    SQL_WRITE --> BATCH_DONE
+
+    BATCH_MODE -- Background --> BATCH_SAVE[📄 Phase 1.5 — Save Batch\nExecution Plan file]
+    BATCH_SAVE --> BATCH_HANDOFF[🚀 Phase 1.6 — Background\nHandoff for Agent E]
+
+    %% Styling
+    style ORCH fill:#4A90D9,color:#fff
+    style CONNECT_I fill:#2ECC71,color:#fff
+    style CONNECT_BG fill:#2ECC71,color:#fff
+    style DOC fill:#9B59B6,color:#fff
+    style DOC2 fill:#9B59B6,color:#fff
+    style DOC3 fill:#9B59B6,color:#fff
+    style DOC5 fill:#9B59B6,color:#fff
+    style HC fill:#E67E22,color:#fff
+    style HC2 fill:#E67E22,color:#fff
+    style HC4 fill:#E67E22,color:#fff
+    style HC5 fill:#E67E22,color:#fff
+    style ING fill:#1ABC9C,color:#fff
+    style ING3 fill:#1ABC9C,color:#fff
+    style ING4 fill:#1ABC9C,color:#fff
+    style ING5 fill:#1ABC9C,color:#fff
+    style BATCH_E fill:#E74C3C,color:#fff
+    style PAR_BCD fill:#F39C12,color:#fff
+    style PAR_BC fill:#F39C12,color:#fff
+    style PAR_BD fill:#F39C12,color:#fff
+    style PAR_CD fill:#F39C12,color:#fff
+    style HANDOFF fill:#8E44AD,color:#fff
+    style BATCH_HANDOFF fill:#8E44AD,color:#fff
