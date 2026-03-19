@@ -1,0 +1,7 @@
+{
+  "fabricSql": {
+    "endpoint": "3n4ybeiczeuu5mrms5secdidou-afqzpibh3g4e3kr3daxyqoquru.database.fabric.microsoft.com,1433",
+    "database": "ReportLog-51985d40-3d8c-478f-9371-43bd8be89860",
+    "authentication": "ActiveDirectoryInteractive"
+  }
+}
