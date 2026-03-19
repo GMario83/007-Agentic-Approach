@@ -49,7 +49,7 @@ Do not iterate on the file structure. There are no additional files or folders. 
 > **Rule:** B, C, and D do **not** depend on each other. When the plan includes multiple post-connection agents, they **must** be launched in parallel (concurrent `runSubagent` calls in the same turn), not sequentially.
 > **Rule:** Step A (connection) is always executed in interactive mode and is never delegated to background execution.
 > **Rule:** Agent E is a **standalone plan** — it is never combined with B, C, or D in the same execution. It manages its own internal connection loop (connecting to each model sequentially) and delegates to Agent B internally.
-> **Rule:** For batch plans, the orchestrator does **not** perform an initial interactive connection. Agent E manages all connections to individual models within the workspace. However, the user must have valid Fabric workspace credentials (Entra ID) before batch execution begins.
+> **Rule:** For batch plans, the orchestrator does **not** perform an initial interactive connection. No specific model is known at the start of a batch — Agent E first lists all models in the workspace and presents them for the user to select which ones to audit (opt-in). Agent E then manages connections to each selected model sequentially. The user must have valid Fabric workspace credentials (Entra ID) before batch execution begins.
 
 ---
 
@@ -110,10 +110,11 @@ Proceed? (y/n)
 ```
 📋 Execution Plan (Batch)
 ─────────────────────────
-Step 1: Enumerate all models in workspace "<Workspace>"  → Batch Documentation Agent
-Step 2: For each model: Connect + Document               → Batch Documentation Agent (loops A→B)
-Step 3: Produce consolidated batch summary               → Batch Documentation Agent
-Step 4: Write results to SQL (if requested)              → Batch Documentation Agent
+Step 1: List all models in workspace "<Workspace>"       → Batch Documentation Agent (interactive selection)
+Step 2: User selects which models to audit               → Interactive prompt (opt-in)
+Step 3: For each selected model: Connect + Document      → Batch Documentation Agent (loops A→B)
+Step 4: Produce consolidated batch summary               → Batch Documentation Agent
+Step 5: Write results to SQL (if requested)              → Batch Documentation Agent
 Output path: <path>
 Run timestamp: <timestamp>
 SQL write-back: Yes / No
@@ -231,14 +232,14 @@ Connection is mandatory in interactive mode for every run, including runs that w
 
 If the plan is a **batch plan** (Agent E):
 
-1. Do **not** perform an initial connection — Agent E manages all connections internally.
+1. Do **not** perform an initial model connection — no specific model is known yet. Agent E first lists all models in the workspace, then the user interactively selects which ones to audit.
 2. Invoke **Batch Documentation Agent** via a single `runSubagent` call with:
    - The workspace name
    - The output path
    - The run timestamp
    - Whether SQL write-back is requested (yes/no)
-   - Outcome: enumerate all models in the workspace, run documentation checks on each, produce per-model documentation files and a consolidated batch summary. If SQL is requested, persist executive summaries to Fabric SQL.
-3. Wait for Agent E to complete.
+   - Outcome: list all models in the workspace, present them to the user for interactive opt-in selection, then run documentation checks on each selected model, produce per-model documentation files and a consolidated batch summary. If SQL is requested, persist executive summaries to Fabric SQL.
+3. Wait for Agent E to complete (note: Agent E will pause for user selection during Step 1).
 4. Proceed to Phase 3 with the batch results.
 
 > Agent E can also be run in **background mode**. In that case, after confirming the batch plan with the user, proceed to Phase 1.5 to save the execution plan file, then Phase 1.6 to hand off to a background agent that invokes Agent E.

@@ -59,17 +59,17 @@ Check whether the `DocumentationAuditSummary` table already exists by querying `
 
 ---
 
-## Step 1 — Enumerate Models
+## Step 1 — Enumerate & Select Models (Interactive)
 
-Discover all semantic models available in the specified Fabric workspace:
+Discover all semantic models in the workspace and let the user choose which ones to audit. **No model connection is needed for this step** — enumeration uses workspace-level listing only.
 
-1. Use the Power BI MCP tooling to list all available semantic models in the workspace.
+1. Use the Power BI MCP tooling to list all available semantic models in the workspace (workspace-level list operation — no individual model connection required).
 2. Build a **model roster** — a numbered list of model names.
-3. Present the roster to the user or orchestrator for confirmation:
+3. Present the roster to the user and ask them to **select which models to audit** (opt-in):
 
 ```
-📋 Model Roster — [Workspace Name]
-────────────────────────────────────
+📋 Available Models — [Workspace Name]
+────────────────────────────────────────
 1. Model Alpha
 2. Model Beta
 3. Model Gamma
@@ -77,17 +77,20 @@ Discover all semantic models available in the specified Fabric workspace:
 
 Total: 4 models found.
 
-Exclude any models? (enter numbers to exclude, or press Enter to audit all)
+Which models would you like to audit? (enter numbers, e.g. 1,3,4 — or 'all' to audit every model)
 ```
 
-4. Apply any exclusions and record the **final model list** and **total model count**.
-5. Store the roster in working memory for use in subsequent steps.
+4. Wait for the user's selection. **Do not proceed until the user has confirmed which models to include.**
+5. Record the **selected model list** and **total model count** (selected vs. available).
+6. Store the roster and selection in working memory for use in subsequent steps.
+
+> **Rule:** This step is always interactive. The user must explicitly choose which models to audit. If no selection is provided, prompt again — do not default to all models.
 
 ---
 
 ## Step 2 — Sequential Model Processing Loop
 
-For each model in the final roster, execute the following sequence:
+For each model in the user's selected list, execute the following sequence:
 
 ### 2.1 — Connect
 
@@ -148,7 +151,7 @@ in the output path. The file follows this structure:
 > **Generated:** [timestamp]
 > **Run Timestamp:** [timestamp]
 > **Workspace:** [name]
-> **Models Audited:** X of Y (Z excluded, W failed)
+> **Models Audited:** X of Y available (Z not selected, W failed)
 > **Mode:** Read-Only Audit
 
 ---
