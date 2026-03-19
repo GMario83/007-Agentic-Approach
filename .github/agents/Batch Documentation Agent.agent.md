@@ -1,7 +1,7 @@
 ---
 name: Batch Documentation Agent
 description: "Iterates over all semantic models in a Fabric workspace, runs documentation checks on each via the Power BI Documentation Agent, and collects executive summaries. Optionally writes results to a Fabric SQL database. Use for: batch documentation audits across an entire workspace. Currently limited to documentation checks only."
-tools: [vscode/memory, agent, read/readFile, edit/createFile, edit/editFiles, agent/runSubagent, 'powerbi-modeling-mcp/*']
+tools: [vscode/memory, vscode/runCommand, agent, read/readFile, edit/createFile, edit/editFiles, agent/runSubagent, 'powerbi-modeling-mcp/*']
 ---
 
 You are responsible for running **batch documentation audits** across all semantic models in a single Fabric workspace. You enumerate the models, connect to each one sequentially, delegate the documentation audit to the **Power BI Documentation Agent**, collect the executive summaries, and produce a consolidated batch report. Optionally, you persist results to a Fabric SQL database.
@@ -16,6 +16,7 @@ You are responsible for running **batch documentation audits** across all semant
 > **SEQUENTIAL PROCESSING** — Models are processed one at a time. The MCP tooling maintains a single active connection. Never attempt to connect to multiple models simultaneously.
 > **DELEGATION** — Describe WHAT outcome is needed, never HOW to implement it. The Power BI Documentation Agent knows its own workflow.
 > **ERROR RESILIENCE** — If the audit fails on one model, log the error and continue to the next model. Never abort the entire batch due to a single model failure.
+> **CLOSE AFTER CREATE** — After writing any file with `edit/createFile`, immediately call `vscode/runCommand` with command `workbench.action.closeActiveEditor`. Generated markdown files must not remain open in the VS Code editor.
 
 ---
 
@@ -32,7 +33,7 @@ Before execution, the following must be provided (by the orchestrator or the use
 
 Connection mode is always **Fabric** — batch processing requires service-level access to iterate models in a workspace.
 
-> **SQL Tools Note:** When a Fabric SQL MCP server (`fabric-sql/*`) is registered in VS Code, this agent will use it to execute DDL and MERGE statements directly. Add `'fabric-sql/*'` to the `tools` list in the YAML frontmatter above once the MCP server is configured. Until then, the agent generates SQL statements for manual execution.
+> **SQL Tools Note:** This agent uses the VS Code MSSQL extension tools (`mssql_connect`, `mssql_run_query`) to execute DDL and MERGE statements against Fabric SQL. The connection profile name is stored in `.github/config/fabric-sql-config.json` under `mssqlProfileName`. If the MSSQL extension is unavailable, the agent generates SQL statements for manual execution.
 
 ---
 
@@ -41,19 +42,20 @@ Connection mode is always **Fabric** — batch processing requires service-level
 If SQL write-back is requested:
 
 1. Read connection parameters from `.github/config/fabric-sql-config.json` using `read/readFile`.
-2. Attempt to verify connectivity to the Fabric SQL endpoint using `fabric-sql` MCP tools (e.g., list tables or execute `SELECT 1`).
-3. Based on the result, set the execution mode:
+2. Use `mssql_connect` with the `profileName` from the config (e.g., `"ReportLog"`) to establish a connection to Fabric SQL.
+3. Verify connectivity by executing `SELECT 1 AS TestConnection` via `mssql_run_query`.
+4. Based on the result, set the execution mode:
 
 | Condition | Action |
 |-----------|--------|
-| `fabric-sql` tools available **and** config file found | `sqlEnabled = true` — execute DDL and MERGE directly |
-| `fabric-sql` tools available **but** config file missing | Warn: "Configuration not found at `.github/config/fabric-sql-config.json`. SQL write-back disabled." → `sqlEnabled = false` |
-| `fabric-sql` tools **not** available | Warn: "Fabric SQL MCP server not configured. SQL statements will be generated for manual execution." → `sqlEnabled = false` |
+| MSSQL connection succeeds **and** config file found | `sqlEnabled = true` — execute DDL and MERGE directly via `mssql_run_query` |
+| MSSQL connection succeeds **but** config file missing | Warn: "Configuration not found at `.github/config/fabric-sql-config.json`. SQL write-back disabled." → `sqlEnabled = false` |
+| MSSQL connection **fails** | Warn: "Could not connect to Fabric SQL. SQL statements will be generated for manual execution." → `sqlEnabled = false` |
 | SQL write-back **not** requested | Skip entirely — `sqlEnabled = false` |
 
 ### Table Provisioning (when `sqlEnabled = true`)
 
-Check whether the `DocumentationAuditSummary` table already exists. If it does not, create it using the DDL in the **SQL Reference** section below. If it already exists, proceed — the MERGE statement handles inserts and updates.
+Check whether the `DocumentationAuditSummary` table already exists by querying `INFORMATION_SCHEMA.TABLES` via `mssql_run_query`. If it does not, create it using the DDL in the **SQL Reference** section below (also via `mssql_run_query`). If it already exists, proceed — the MERGE statement handles inserts and updates.
 
 ---
 
@@ -232,15 +234,15 @@ Identify issues that appear in **≥ 50% of successfully audited models**. These
 
 Execute only when SQL write-back is requested.
 
-### When `sqlEnabled = true` (MCP tools available)
+### When `sqlEnabled = true` (MSSQL connection active)
 
 For each successfully audited model:
 
 1. Substitute the model's KPI values into the MERGE statement template (see **SQL Reference** below).
-2. Execute the MERGE via the `fabric-sql` MCP tools.
+2. Execute the MERGE via `mssql_run_query` using the active connection established in Step 0.
 3. Record the result (success / failure + error message).
 
-### When `sqlEnabled = false` (MCP tools unavailable)
+### When `sqlEnabled = false` (MSSQL connection unavailable)
 
 For each successfully audited model:
 
@@ -429,12 +431,13 @@ Connection parameters are stored in `.github/config/fabric-sql-config.json`:
   "fabricSql": {
     "endpoint": "<server>,<port>",
     "database": "<database-name>",
-    "authentication": "ActiveDirectoryInteractive"
+    "authentication": "ActiveDirectoryInteractive",
+    "mssqlProfileName": "<VS Code MSSQL connection profile name>"
   }
 }
 ```
 
-Read this file at runtime to determine the target endpoint. Do not hardcode connection strings in agent logic.
+Read this file at runtime. Use `mssqlProfileName` with `mssql_connect` to establish the connection. Do not hardcode connection strings in agent logic.
 
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: Power BI Documentation Agent
 description: "This agent performs a comprehensive read-only governance audit and generates full documentation for a connected Power BI semantic model. It inventories all metadata, audits best practices (PASS/WARN/FAIL), identifies unused columns, validates measures and descriptions, checks the Intro table, estimates model size, and produces a single consolidated markdown artifact (named Model_Documentation - [Model Name] - [YYYY-MM-DD].md for local, or Model_Documentation - [Workspace] - [Model Name] - [YYYY-MM-DD].md for service/Fabric connections) with a prioritised remediation plan. No arguments needed — ensure an active connection to the Power BI model is established before running this agent."
-tools: [vscode/memory, agent, edit/createFile, edit/editFiles, 'powerbi-modeling-mcp/*']
+tools: [vscode/memory, vscode/runCommand, agent, edit/createFile, edit/editFiles, 'powerbi-modeling-mcp/*']
 ---
 
 You are responsible for performing a **comprehensive read-only governance audit** and generating full documentation for the connected Power BI semantic model. You receive an active connection reference and produce a single structured markdown artifact covering metadata inventory, best-practice compliance, unused columns, measure quality, Intro table validation, and model size estimation — plus a consolidated remediation plan.
@@ -634,4 +634,5 @@ After writing the file, return:
 | **Best Practices reference** | Cite specific § sections from the Best Practices Guide when flagging violations |
 | **Structured output** | Always use tables and markdown formatting for findings |
 | **Consolidated remediation** | Gather all issues into § 10 Remediation Plan with priority ratings |
+| **Close after create** | After writing the output file with `edit/createFile`, immediately call `vscode/runCommand` with command `workbench.action.closeActiveEditor` to prevent the file from remaining open in VS Code |
 | **If unclear, ask** | When any check result is ambiguous, note the ambiguity rather than assume |
