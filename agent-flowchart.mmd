@@ -70,7 +70,7 @@ flowchart TD
     MORE -- Yes --> LOOP
     MORE -- No --> BATCH_SUM[Step 3 — Batch Summary\n📄 Batch_Documentation_Summary .md\nCross-model patterns]
     BATCH_SUM --> SQL{SQL\nwrite-back?}
-    SQL -- Yes --> SQL_WRITE[Step 4 — MERGE to\nFabric SQL via MSSQL]
+    SQL -- Yes --> SQL_WRITE[Step 4 — INSERT to\nFabric SQL via MSSQL]
     SQL -- No --> BATCH_DONE[Phase 3 — Batch Summary\n🟢🟡🔴 per model]
     SQL_WRITE --> BATCH_DONE
 

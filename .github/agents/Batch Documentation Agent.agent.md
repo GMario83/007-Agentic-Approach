@@ -33,7 +33,7 @@ Before execution, the following must be provided (by the orchestrator or the use
 
 Connection mode is always **Fabric** — batch processing requires service-level access to iterate models in a workspace.
 
-> **SQL Tools Note:** This agent uses the VS Code MSSQL extension tools (`mssql_connect`, `mssql_run_query`) to execute DDL and MERGE statements against Fabric SQL. The connection profile name is stored in `.github/config/fabric-sql-config.json` under `mssqlProfileName`. If the MSSQL extension is unavailable, the agent generates SQL statements for manual execution.
+> **SQL Tools Note:** This agent uses the VS Code MSSQL extension tools (`mssql_connect`, `mssql_run_query`) to execute DDL and INSERT statements against Fabric SQL. The connection profile name is stored in `.github/config/fabric-sql-config.json` under `mssqlProfileName`. If the MSSQL extension is unavailable, the agent generates SQL statements for manual execution.
 
 ---
 
@@ -48,14 +48,14 @@ If SQL write-back is requested:
 
 | Condition | Action |
 |-----------|--------|
-| MSSQL connection succeeds **and** config file found | `sqlEnabled = true` — execute DDL and MERGE directly via `mssql_run_query` |
+| MSSQL connection succeeds **and** config file found | `sqlEnabled = true` — execute DDL and INSERT directly via `mssql_run_query` |
 | MSSQL connection succeeds **but** config file missing | Warn: "Configuration not found at `.github/config/fabric-sql-config.json`. SQL write-back disabled." → `sqlEnabled = false` |
 | MSSQL connection **fails** | Warn: "Could not connect to Fabric SQL. SQL statements will be generated for manual execution." → `sqlEnabled = false` |
 | SQL write-back **not** requested | Skip entirely — `sqlEnabled = false` |
 
 ### Table Provisioning (when `sqlEnabled = true`)
 
-Check whether the `DocumentationAuditSummary` table already exists by querying `INFORMATION_SCHEMA.TABLES` via `mssql_run_query`. If it does not, create it using the DDL in the **SQL Reference** section below (also via `mssql_run_query`). If it already exists, proceed — the MERGE statement handles inserts and updates.
+Check whether the `DocumentationAuditSummary` table already exists by querying `INFORMATION_SCHEMA.TABLES` via `mssql_run_query`. If it does not, create it using the DDL in the **SQL Reference** section below (also via `mssql_run_query`). If it already exists, proceed — the INSERT statement will add new rows for this batch run.
 
 ---
 
@@ -210,11 +210,12 @@ Identify issues that appear in **≥ 50% of successfully audited models**. These
 
 (only if SQL write-back was requested)
 
-| Model | SQL Status | Detail |
-|-------|------------|--------|
-| Model Alpha | ✅ Written | MERGE executed successfully |
-| Model Beta | ✅ Written | MERGE executed successfully |
-| Model Gamma | ⏭️ Skipped | Audit failed — no data to write |
+| Metric | Value |
+|--------|-------|
+| Models included | X of Y successfully audited |
+| SQL strategy | Single multi-row INSERT |
+| Status | ✅ All X models written in single INSERT / ❌ INSERT failed: [error] |
+| Models skipped | Z (audit failed — no data to write) |
 
 ---
 
@@ -226,32 +227,37 @@ Identify issues that appear in **≥ 50% of successfully audited models**. These
 
 (DDL from SQL Reference section)
 
-### Data Insert/Update (per model)
+### Data Insert (all models in one statement)
 
-(MERGE statements with actual values substituted)
+(Single INSERT statement with all model rows substituted — see SQL Reference for template)
 ```
 
 ---
 
 ## Step 4 — SQL Persistence (Optional)
 
-Execute only when SQL write-back is requested.
+Execute only when SQL write-back is requested. This step runs **after** Step 3 — all model results must be collected first so they can be written in a single SQL statement.
+
+### Build the Multi-Row INSERT
+
+Collect all successfully audited models from working memory and build **one** `INSERT INTO DocumentationAuditSummary (...) VALUES (row1), (row2), ...` statement with one value-set per model. Use the INSERT template in the **SQL Reference** section below, substituting each model's KPI values into its own `(...)` row block.
+
+If no models were successfully audited (all failed), skip SQL persistence entirely and note "No data to write — all models failed" in the batch summary.
 
 ### When `sqlEnabled = true` (MSSQL connection active)
 
-For each successfully audited model:
-
-1. Substitute the model's KPI values into the MERGE statement template (see **SQL Reference** below).
-2. Execute the MERGE via `mssql_run_query` using the active connection established in Step 0.
-3. Record the result (success / failure + error message).
+1. Execute the single multi-row INSERT via `mssql_run_query` using the active connection established in Step 0.
+2. Record the result as a **batch-level** outcome:
+   - **Success:** "All N models written in single INSERT" (where N = count of successfully audited models)
+   - **Failure:** "INSERT failed: [error message]" — no rows are written (atomic: all-or-nothing)
 
 ### When `sqlEnabled = false` (MSSQL connection unavailable)
 
-For each successfully audited model:
-
-1. Substitute the model's KPI values into the MERGE statement template.
-2. Append the fully rendered, ready-to-execute MERGE statement to the **SQL Statements** section of the batch summary file.
+1. Generate the single multi-row INSERT statement with all model rows substituted.
+2. Include the fully rendered, ready-to-execute INSERT in the **SQL Statements** section of the batch summary file.
 3. Include the DDL `CREATE TABLE` statement at the top of that section (for first-time setup).
+
+> **Large batch note:** If the batch contains more than 50 successfully audited models, split into multiple INSERT statements of up to 50 rows each to stay within Fabric SQL statement-size limits. Execute each INSERT sequentially.
 
 ---
 
@@ -313,46 +319,18 @@ CREATE TABLE DocumentationAuditSummary (
 
     -- Audit metadata
     CreatedAt                DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedAt                DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
 
     CONSTRAINT PK_DocumentationAuditSummary PRIMARY KEY (AuditId),
     CONSTRAINT UQ_Audit_Run UNIQUE (RunTimestamp, WorkspaceName, SemanticModelName)
 );
 ```
 
-#### UPSERT (MERGE)
+#### BATCH INSERT
 
-Use this template for each model. Replace all `@Parameter` placeholders with actual values.
+Build a single INSERT statement containing **one row per successfully audited model**. Replace all `@Model_N_*` placeholders with actual values for each model. Add or remove `(...)` value-set blocks to match the number of models in the batch.
 
 ```sql
-MERGE INTO DocumentationAuditSummary AS target
-USING (VALUES (
-    @RunTimestamp,
-    @WorkspaceName,
-    @SemanticModelName,
-    @TotalGreen,
-    @TotalYellow,
-    @TotalRed,
-    @KPI_StarSchema,
-    @KPI_RelationshipDesign,
-    @KPI_ColumnHygiene,
-    @KPI_AutoDateTime,
-    @KPI_StorageModes,
-    @KPI_NamingConventions,
-    @KPI_UnusedColumns,
-    @KPI_MeasureQuality,
-    @KPI_DescriptionCoverage,
-    @KPI_MeasureOrganisation,
-    @KPI_IntroTable,
-    @KPI_ModelSizeCardinality,
-    @KPI_SensitivityLabel,
-    @KPI_RowLevelSecurity,
-    @TableCount,
-    @MeasureCount,
-    @RelationshipCount,
-    @EstimatedSizeMB,
-    @DocumentationFilePath
-)) AS source (
+INSERT INTO DocumentationAuditSummary (
     RunTimestamp, WorkspaceName, SemanticModelName,
     TotalGreen, TotalYellow, TotalRed,
     KPI_StarSchema, KPI_RelationshipDesign, KPI_ColumnHygiene,
@@ -363,57 +341,42 @@ USING (VALUES (
     TableCount, MeasureCount, RelationshipCount, EstimatedSizeMB,
     DocumentationFilePath
 )
-ON target.RunTimestamp = source.RunTimestamp
-   AND target.WorkspaceName = source.WorkspaceName
-   AND target.SemanticModelName = source.SemanticModelName
-WHEN MATCHED THEN UPDATE SET
-    TotalGreen               = source.TotalGreen,
-    TotalYellow              = source.TotalYellow,
-    TotalRed                 = source.TotalRed,
-    KPI_StarSchema           = source.KPI_StarSchema,
-    KPI_RelationshipDesign   = source.KPI_RelationshipDesign,
-    KPI_ColumnHygiene        = source.KPI_ColumnHygiene,
-    KPI_AutoDateTime         = source.KPI_AutoDateTime,
-    KPI_StorageModes         = source.KPI_StorageModes,
-    KPI_NamingConventions    = source.KPI_NamingConventions,
-    KPI_UnusedColumns        = source.KPI_UnusedColumns,
-    KPI_MeasureQuality       = source.KPI_MeasureQuality,
-    KPI_DescriptionCoverage  = source.KPI_DescriptionCoverage,
-    KPI_MeasureOrganisation  = source.KPI_MeasureOrganisation,
-    KPI_IntroTable           = source.KPI_IntroTable,
-    KPI_ModelSizeCardinality = source.KPI_ModelSizeCardinality,
-    KPI_SensitivityLabel     = source.KPI_SensitivityLabel,
-    KPI_RowLevelSecurity     = source.KPI_RowLevelSecurity,
-    TableCount               = source.TableCount,
-    MeasureCount             = source.MeasureCount,
-    RelationshipCount        = source.RelationshipCount,
-    EstimatedSizeMB          = source.EstimatedSizeMB,
-    DocumentationFilePath    = source.DocumentationFilePath,
-    UpdatedAt                = SYSUTCDATETIME()
-WHEN NOT MATCHED THEN INSERT (
-    RunTimestamp, WorkspaceName, SemanticModelName,
-    TotalGreen, TotalYellow, TotalRed,
-    KPI_StarSchema, KPI_RelationshipDesign, KPI_ColumnHygiene,
-    KPI_AutoDateTime, KPI_StorageModes, KPI_NamingConventions,
-    KPI_UnusedColumns, KPI_MeasureQuality, KPI_DescriptionCoverage,
-    KPI_MeasureOrganisation, KPI_IntroTable, KPI_ModelSizeCardinality,
-    KPI_SensitivityLabel, KPI_RowLevelSecurity,
-    TableCount, MeasureCount, RelationshipCount, EstimatedSizeMB,
-    DocumentationFilePath
-) VALUES (
-    source.RunTimestamp, source.WorkspaceName, source.SemanticModelName,
-    source.TotalGreen, source.TotalYellow, source.TotalRed,
-    source.KPI_StarSchema, source.KPI_RelationshipDesign, source.KPI_ColumnHygiene,
-    source.KPI_AutoDateTime, source.KPI_StorageModes, source.KPI_NamingConventions,
-    source.KPI_UnusedColumns, source.KPI_MeasureQuality, source.KPI_DescriptionCoverage,
-    source.KPI_MeasureOrganisation, source.KPI_IntroTable, source.KPI_ModelSizeCardinality,
-    source.KPI_SensitivityLabel, source.KPI_RowLevelSecurity,
-    source.TableCount, source.MeasureCount, source.RelationshipCount, source.EstimatedSizeMB,
-    source.DocumentationFilePath
-);
+VALUES
+    -- Model 1
+    (
+        @RunTimestamp,
+        @WorkspaceName,
+        @Model_1_SemanticModelName,
+        @Model_1_TotalGreen, @Model_1_TotalYellow, @Model_1_TotalRed,
+        @Model_1_KPI_StarSchema, @Model_1_KPI_RelationshipDesign, @Model_1_KPI_ColumnHygiene,
+        @Model_1_KPI_AutoDateTime, @Model_1_KPI_StorageModes, @Model_1_KPI_NamingConventions,
+        @Model_1_KPI_UnusedColumns, @Model_1_KPI_MeasureQuality, @Model_1_KPI_DescriptionCoverage,
+        @Model_1_KPI_MeasureOrganisation, @Model_1_KPI_IntroTable, @Model_1_KPI_ModelSizeCardinality,
+        @Model_1_KPI_SensitivityLabel, @Model_1_KPI_RowLevelSecurity,
+        @Model_1_TableCount, @Model_1_MeasureCount, @Model_1_RelationshipCount,
+        @Model_1_EstimatedSizeMB, @Model_1_DocumentationFilePath
+    ),
+    -- Model 2
+    (
+        @RunTimestamp,
+        @WorkspaceName,
+        @Model_2_SemanticModelName,
+        @Model_2_TotalGreen, @Model_2_TotalYellow, @Model_2_TotalRed,
+        @Model_2_KPI_StarSchema, @Model_2_KPI_RelationshipDesign, @Model_2_KPI_ColumnHygiene,
+        @Model_2_KPI_AutoDateTime, @Model_2_KPI_StorageModes, @Model_2_KPI_NamingConventions,
+        @Model_2_KPI_UnusedColumns, @Model_2_KPI_MeasureQuality, @Model_2_KPI_DescriptionCoverage,
+        @Model_2_KPI_MeasureOrganisation, @Model_2_KPI_IntroTable, @Model_2_KPI_ModelSizeCardinality,
+        @Model_2_KPI_SensitivityLabel, @Model_2_KPI_RowLevelSecurity,
+        @Model_2_TableCount, @Model_2_MeasureCount, @Model_2_RelationshipCount,
+        @Model_2_EstimatedSizeMB, @Model_2_DocumentationFilePath
+    )
+    -- ... repeat for each successfully audited model
+;
 ```
 
-> **Key design:** The MERGE matches on `(RunTimestamp, WorkspaceName, SemanticModelName)`. Re-running a batch for the same workspace + model + timestamp **updates** existing rows; new runs with different timestamps **insert** fresh rows. This supports both idempotent reruns and historical tracking.
+> **Key design:** `RunTimestamp` and `WorkspaceName` are shared across all rows (captured once at batch start). Each row differs only by `SemanticModelName` and its KPI values. Each batch run generates a unique `RunTimestamp`, so re-runs always insert fresh rows for historical tracking. The `UNIQUE (RunTimestamp, WorkspaceName, SemanticModelName)` constraint guarantees no duplicates within the same run.
+>
+> **Large batch note:** If the batch contains more than 50 successfully audited models, split into multiple INSERT statements of up to 50 rows each and execute them sequentially.
 
 #### KPI Value Mapping
 
@@ -452,6 +415,6 @@ Read this file at runtime. Use `mssqlProfileName` with `mssql_connect` to establ
 | **Sequential** | Process one model at a time — MCP supports only one active connection |
 | **Resilient** | If one model fails, log it and continue to the next |
 | **Delegated** | The Documentation Agent does the actual audit work — this agent orchestrates the batch loop |
-| **Idempotent SQL** | The MERGE statement is safe to re-run — no duplicate rows |
+| **Atomic SQL** | All model results are written in a single multi-row INSERT — all-or-nothing. Each batch run has a unique `RunTimestamp`, so re-runs insert fresh rows for historical tracking. |
 | **Config-driven SQL** | Always read SQL endpoint from `.github/config/fabric-sql-config.json` — never hardcode |
 | **Timestamp consistency** | Capture one run timestamp at start and reuse it for all models and all generated files |
