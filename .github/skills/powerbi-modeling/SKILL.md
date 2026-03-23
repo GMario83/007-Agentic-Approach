@@ -31,6 +31,8 @@ description: >
 | Calculated columns | PascalCase | `AgeBucket`, `FiscalQuarter` |
 | Hidden columns | Same naming, hidden flag | Keys, IDs, sort helpers |
 
+> For detailed DAX naming conventions (measures, variables, UDFs, parameters), see the **dax** skill (§ 1).
+
 ### § 1.3 Column Hygiene
 - Remove every column not needed for reporting, relationships, or calculations.
 - Hide surrogate keys, IDs, and sort-by columns.
@@ -254,19 +256,9 @@ Customer
   └─ Segmentation     → Segment, Tier, AccountType
 ```
 
-### § 8.2 Standard DAX Measure Patterns
+### § 8.2 → See dax skill
 
-| Category | Pattern |
-|---|---|
-| Base aggregation | `Total Sales = SUM(Sales[Amount])` |
-| Row count | `Order Count = COUNTROWS(Sales)` |
-| Average / ratio | `Avg Order Value = DIVIDE([Total Sales], [Order Count])` |
-| Distinct count | `Customer Count = DISTINCTCOUNT(Sales[CustomerID])` |
-| YTD | `YTD Sales = TOTALYTD([Total Sales], 'Date'[Date])` |
-| Prior year | `PY Sales = CALCULATE([Total Sales], SAMEPERIODLASTYEAR('Date'[Date]))` |
-| Year-over-Year % | `YoY % = DIVIDE([Total Sales] - [PY Sales], [PY Sales])` |
-| Rolling 12 months | `Rolling 12M = CALCULATE([Total Sales], DATESINPERIOD('Date'[Date], MAX('Date'[Date]), -12, MONTH))` |
-| Share of total | `Sales % of Total = DIVIDE([Total Sales], CALCULATE([Total Sales], REMOVEFILTERS(Product)))` |
+For standard DAX measure patterns, formatting, and code examples, see the **dax** skill (§ 6 Standard Patterns).
 
 ### § 8.3 Format Strings
 
@@ -279,20 +271,13 @@ Customer
 | Currency (EUR) | `€#,0.00` | €1,234.56 |
 | Large numbers | `#,0,,M` | 1M |
 
-### § 8.4 Division
-- Always use `DIVIDE(numerator, denominator)` — never the `/` operator.
-- `DIVIDE` handles division-by-zero gracefully (returns BLANK or an alternate value).
+### § 8.4 → See dax skill
 
-### § 8.5 Measure Validation
-- Every measure must be tested after creation:
+For the DIVIDE rule and DAX division best practices, see the **dax** skill (§ 7 Division Rule).
 
-```dax
-EVALUATE ROW("Result", [Measure Name])
-```
+### § 8.5 → See dax skill
 
-- **Error** → fix expression and retry.
-- **BLANK** → verify data exists in context; document if expected.
-- **Valid result** → measure is production-ready.
+For measure testing and validation workflows (EVALUATE ROW pattern), see the **dax** skill (§ 5 Testing & Validation).
 
 ---
 

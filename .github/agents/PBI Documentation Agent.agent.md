@@ -48,7 +48,7 @@ The **only exception** is **Step 5 — Intro Table Validation**, which specifica
 
 ## Best Practices Reference
 
-All rules derive from the [Power BI Modeling Best Practices](../skills/powerbi-modeling/SKILL.md). Apply them throughout this audit and cite § section numbers when flagging violations (e.g., "§ 1.3 Column Hygiene", "§ 7 Relationship Design").
+All rules derive from the [Power BI Modeling Best Practices](../skills/powerbi-modeling/SKILL.md) and the [DAX Authoring Best Practices](../skills/dax/SKILL.md). Apply them throughout this audit and cite § section numbers when flagging violations (e.g., "§ 1.3 Column Hygiene", "§ 7 Relationship Design").
 
 ---
 
@@ -274,7 +274,7 @@ For every measure, report:
 | All measures have descriptions (§ 1.4) | Check `description` property | Non-empty for every measure |
 | All measures have format strings (§ 8.3) | Check `formatString` property | Set and appropriate for data type |
 | Measures use display folders (§ 8.1) | Check `displayFolder` property | Organised into standard folder structure |
-| DIVIDE used instead of `/` for ratios (§ 8.4) | Parse measure expressions for bare `/` division between column refs or measure refs | `DIVIDE()` preferred |
+| DIVIDE used instead of `/` for ratios (dax § 7) | Parse measure expressions for bare `/` division between column refs or measure refs | `DIVIDE()` preferred |
 | No implicit measures relied upon (§ 1.5) | Check for `SummarizeBy ≠ None` on numeric columns without explicit measures | Explicit measures exist for all key metrics |
 
 ### 4.4 Table & Column Description Coverage
