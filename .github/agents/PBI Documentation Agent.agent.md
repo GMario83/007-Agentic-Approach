@@ -48,7 +48,7 @@ The **only exception** is **Step 5 — Intro Table Validation**, which specifica
 
 ## Best Practices Reference
 
-All rules derive from the [Power BI Modeling Best Practices](../../skills/powerbi-modeling.md). Apply them throughout this audit and cite § section numbers when flagging violations (e.g., "§ 1.3 Column Hygiene", "§ 7 Relationship Design").
+All rules derive from the [Power BI Modeling Best Practices](../skills/powerbi-modeling/SKILL.md). Apply them throughout this audit and cite § section numbers when flagging violations (e.g., "§ 1.3 Column Hygiene", "§ 7 Relationship Design").
 
 ---
 

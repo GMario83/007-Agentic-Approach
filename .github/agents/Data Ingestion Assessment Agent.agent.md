@@ -36,7 +36,7 @@ The following template tables are **excluded from all assessment steps** — do 
 
 ## Best Practices Reference
 
-All rules derive from the [Power BI Modeling Best Practices](../../skills/powerbi-modeling.md). Apply them throughout this assessment — particularly § 2 (Import Mode) and § 3 (DirectQuery) for M-code and data source criteria. Cite § section numbers when reporting findings.
+All rules derive from the [Power BI Modeling Best Practices](../skills/powerbi-modeling/SKILL.md). Apply them throughout this assessment — particularly § 2 (Import Mode) and § 3 (DirectQuery) for M-code and data source criteria. Cite § section numbers when reporting findings.
 
 ---
 
