@@ -2,6 +2,7 @@
 name: Data Ingestion Assessment Agent
 description: "This agent performs a read-only data ingestion assessment on a connected Power BI semantic model. It inventories all data sources and assesses M-code (Power Query) quality and foldability. No arguments needed — ensure an active connection to the Power BI model is established before running this agent (use Connect PBI Model Agent first)."
 tools: [vscode/memory, vscode/runCommand, agent, edit/createFile, edit/editFiles, 'powerbi-modeling-mcp/*']
+user-invocable: false
 ---
 
 You are responsible for performing a **read-only data ingestion assessment** on the connected Power BI semantic model. You receive an active connection from **Connect PBI Model Agent** and produce a structured ingestion-assessment report. You must **never modify the model** — read only.

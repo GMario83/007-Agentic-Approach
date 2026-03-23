@@ -1,6 +1,6 @@
 ---
 name: PBI Orchestrator
-description: "This agent is a dynamic planner and orchestrator for Power BI workflows. It interprets the user's intent, builds a tailored execution plan from available specialist agents (connect, document, health check, ingestion assessment, batch documentation), and delegates work step-by-step. Use for: documenting models, running health checks, assessing data ingestion, batch documentation audits across a workspace, or any combination."
+description: "This agent is a dynamic planner and orchestrator for Power BI workflows. It interprets the user's intent, builds a tailored execution plan from available specialist agents (connect, document, health check, ingestion assessment, DAX optimization, batch documentation), and delegates work step-by-step. Use for: documenting models, running health checks, assessing data ingestion, optimizing DAX measures, batch documentation audits across a workspace, or any combination."
 tools: [agent/runSubagent, vscode/runCommand, vscode/askQuestions, vscode/memory, read/readFile, edit/createFile, edit/editFiles, search/fileSearch, search/listDirectory, todo]
 ---
 
@@ -29,6 +29,7 @@ Do not iterate on the file structure. There are no additional files or folders. 
 | C | **Power BI Health Check** | Generates `Health_Check_Report - [Workspace - ][Model Name] - [YYYY-MM-DD].md` — row counts, DAX validation with execution-time measurement |
 | D | **Data Ingestion Assessment Agent** | Generates `Ingestion_Assessment - [Workspace - ][Model Name] - [YYYY-MM-DD].md` — data source inventory, M-code quality assessment |
 | E | **Batch Documentation Agent** | Iterates all semantic models in a Fabric workspace, runs documentation checks on each (via Agent B internally), produces per-model documentation files + `Batch_Documentation_Summary - [Workspace] - [YYYY-MM-DD].md`. Optionally writes executive summaries to Fabric SQL. Currently limited to documentation checks only. |
+| F | **Optimize DAX Agent** | Analyzes all DAX measures for description quality, naming compliance, formatting, and optimization opportunities — produces `DAX_Optimization - [Workspace - ][Model Name] - [YYYY-MM-DD].md` with current vs proposed changes for each measure |
 
 ---
 
@@ -42,13 +43,14 @@ Do not iterate on the file structure. There are no additional files or folders. 
 | **Document / Audit** | A → B | User wants model documentation and/or governance audit |
 | **Health check** | A → C | User wants a health-check report |
 | **Ingestion assessment** | A → D | User wants data source and ingestion analysis |
-| **Full review** | A → B ∥ C ∥ D | User wants all — documentation, health check, and ingestion assessment run **in parallel** after connection |
+| **DAX optimization** | A → F | User wants DAX measure analysis only |
+| **Full review** | A → B ∥ C ∥ D ∥ F | User wants all — documentation, health check, ingestion assessment, and DAX optimization run **in parallel** after connection |
 | **Batch documentation** | E | User wants documentation audit for **all models** in a workspace — Agent E handles connection + audit loop internally |
 | **Batch documentation + SQL** | E (with SQL write-back) | Same as above, plus persist executive summaries to Fabric SQL |
 
-> **Rule:** B, C, and D do **not** depend on each other. When the plan includes multiple post-connection agents, they **must** be launched in parallel (concurrent `runSubagent` calls in the same turn), not sequentially.
+> **Rule:** B, C, D, and F do **not** depend on each other. When the plan includes multiple post-connection agents, they **must** be launched in parallel (concurrent `runSubagent` calls in the same turn), not sequentially.
 > **Rule:** Step A (connection) is always executed in interactive mode and is never delegated to background execution.
-> **Rule:** Agent E is a **standalone plan** — it is never combined with B, C, or D in the same execution. It manages its own internal connection loop (connecting to each model sequentially) and delegates to Agent B internally.
+> **Rule:** Agent E is a **standalone plan** — it is never combined with B, C, D, or F in the same execution. It manages its own internal connection loop (connecting to each model sequentially) and delegates to Agent B internally.
 > **Rule:** For batch plans, the orchestrator does **not** perform an initial interactive connection. No specific model is known at the start of a batch — Agent E first lists all models in the workspace and presents them for the user to select which ones to audit (opt-in). Agent E then manages connections to each selected model sequentially. The user must have valid Fabric workspace credentials (Entra ID) before batch execution begins.
 
 ---
@@ -59,7 +61,7 @@ Do not iterate on the file structure. There are no additional files or folders. 
 
 Read the user's request carefully and determine:
 
-1. **What do they want to achieve?** (document, health check, ingestion assessment, any combination, just connect, batch documentation, etc.)
+1. **What do they want to achieve?** (document, health check, ingestion assessment, DAX optimization, any combination, just connect, batch documentation, etc.)
 2. **Is this a batch request?** Look for keywords: "batch", "all models", "entire workspace", "workspace-wide", "every model", "all semantic models". If yes → select a **batch plan** (Agent E).
 3. **Do they provide connection details?** (mode, model name, workspace)
 4. **Do they provide an output path?** (path for all generated files)
@@ -99,6 +101,7 @@ Step 1: Connect to "<Model Name>" via <mode>        → Connect PBI Model Agent
 Step 2: Generate model documentation                 → Power BI Documentation Agent
 Step 3: Run health checks                            → Power BI Health Check
 Step 4: Assess data ingestion                        → Data Ingestion Assessment Agent
+Step 5: Analyze DAX measures                         → Optimize DAX Agent
 Output path: <path>
 Run timestamp: <timestamp>
 
@@ -174,6 +177,7 @@ Create a file named `Execution_Plan - [Model Name] - [YYYY-MM-DD].md` (local) or
 | 2 | Power BI Documentation Agent | Generate documentation | Model_Documentation - [Workspace - ][Model Name] - [YYYY-MM-DD].md | ⏳ Pending | G1 |
 | 3 | Power BI Health Check | Run health checks | Health_Check_Report - [Workspace - ][Model Name] - [YYYY-MM-DD].md | ⏳ Pending | G1 |
 | 4 | Data Ingestion Assessment Agent | Assess data ingestion | Ingestion_Assessment - [Workspace - ][Model Name] - [YYYY-MM-DD].md | ⏳ Pending | G1 |
+| 5 | Optimize DAX Agent | Analyze DAX measures | DAX_Optimization - [Workspace - ][Model Name] - [YYYY-MM-DD].md | ⏳ Pending | G1 |
 
 > Steps sharing the same **Parallel Group** run concurrently after all prior steps complete.
 > Omit rows for agents not included in this plan.
@@ -244,9 +248,9 @@ If the plan is a **batch plan** (Agent E):
 
 > Agent E can also be run in **background mode**. In that case, after confirming the batch plan with the user, proceed to Phase 1.5 to save the execution plan file, then Phase 1.6 to hand off to a background agent that invokes Agent E.
 
-#### Parallel Dispatch (Agents B, C, D)
+#### Parallel Dispatch (Agents B, C, D, F)
 
-If the plan includes **multiple** post-connection agents (any combination of B, C, D):
+If the plan includes **multiple** post-connection agents (any combination of B, C, D, F):
 
 1. Invoke all included agents **concurrently** — multiple `runSubagent` calls in the same turn.
 2. Each agent receives the confirmed connection reference and its specific outcome (see below).
@@ -283,6 +287,15 @@ Delegate to **Data Ingestion Assessment Agent** with:
 - The run timestamp, model name, and workspace (if service/Fabric)
 - Outcome: produce and save `Ingestion_Assessment - [Workspace - ][Model Name] - [YYYY-MM-DD].md` in the output path, including `Run Timestamp`, `Model Name`, and `Workspace` (if applicable) in the file content
 - Return: source count, M-code issues found, top remediation items
+
+#### DAX Optimization (Agent F)
+
+Delegate to **Optimize DAX Agent** with:
+- The confirmed connection reference
+- The output path (use user-provided path or default `C:\temp`)
+- The run timestamp, model name, and workspace (if service/Fabric)
+- Outcome: analyze all DAX measures for description quality, naming compliance, formatting, and optimization opportunities; save `DAX_Optimization - [Workspace - ][Model Name] - [YYYY-MM-DD].md` in the output path, including `Run Timestamp`, `Model Name`, and `Workspace` (if applicable) in the file content
+- Return: measures analyzed, per-category PASS/WARN/FAIL counts, file path, top remediation items
 
 ### Phase 3 — Summarise
 
@@ -361,6 +374,10 @@ After collecting results from all agents that ran (single-model plans only), ass
 | 📦 Ingestion | 3 | Anti-Pattern Severity | 🟢 / 🟡 / 🔴 | |
 | 📦 Ingestion | 4 | M-Code Complexity | 🟢 / 🟡 / 🔴 | |
 | 📦 Ingestion | 5 | Best Practices Alignment | 🟢 / 🟡 / 🔴 | |
+| ⚡ DAX Optimization | 1 | Description Quality | 🟢 / 🟡 / 🔴 | |
+| ⚡ DAX Optimization | 2 | Naming Compliance | 🟢 / 🟡 / 🔴 | |
+| ⚡ DAX Optimization | 3 | Formatting Quality | 🟢 / 🟡 / 🔴 | |
+| ⚡ DAX Optimization | 4 | DAX Optimization | 🟢 / 🟡 / 🔴 | |
 
 **Overall: 🟢 X · 🟡 Y · 🔴 Z**
 ```
@@ -403,6 +420,7 @@ After using `edit/createFile` to write any file (including Execution Plan files)
 - "Generate full model documentation for the connected model and save it as `Model_Documentation - [Model Name] - [YYYY-MM-DD].md` (or `Model_Documentation - [Workspace] - [Model Name] - [YYYY-MM-DD].md` for service) in <output path>, including Run Timestamp, Model Name, and Workspace"
 - "Run all health checks on the connected model, save `Health_Check_Report - [Model Name] - [YYYY-MM-DD].md` (or `Health_Check_Report - [Workspace] - [Model Name] - [YYYY-MM-DD].md` for service) in <output path>, and include Run Timestamp, Model Name, and Workspace"
 - "Assess data ingestion for the connected model, save `Ingestion_Assessment - [Model Name] - [YYYY-MM-DD].md` (or `Ingestion_Assessment - [Workspace] - [Model Name] - [YYYY-MM-DD].md` for service) in <output path>, and include Run Timestamp, Model Name, and Workspace"
+- "Analyze all DAX measures in the connected model for description quality, naming compliance, formatting, and optimization; save `DAX_Optimization - [Model Name] - [YYYY-MM-DD].md` (or with [Workspace] for service) in <output path>, and include Run Timestamp, Model Name, and Workspace"
 - "Run documentation checks on all models in workspace 'dev_ws_gentima_poc', save artifacts to C:\temp, and write executive summaries to Fabric SQL"
 - "Run batch documentation audit for workspace 'production_ws', save to C:\temp, no SQL write-back"
 
