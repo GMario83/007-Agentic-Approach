@@ -22,38 +22,28 @@ flowchart TD
     SCOPE -- Ingestion only --> ING[📦 Agent D\nIngestion Assessment]
     ING --> SUM_D[📄 Ingestion_Assessment .md]
 
-    SCOPE -- Doc + Health --> PAR_BC[⚡ Parallel: B ∥ C]
-    PAR_BC --> DOC2[📋 Agent B] & HC2[🏥 Agent C]
-    DOC2 --> SUM_BC1[📄 Model_Documentation .md]
-    HC2 --> SUM_BC2[📄 Health_Check_Report .md]
-    SUM_BC1 & SUM_BC2 --> MERGE_BC[Phase 3 — Consolidated Summary]
+    SCOPE -- DAX optimization only --> DAX[⚡ Agent F\nOptimize DAX Agent]
+    DAX --> SUM_F[📄 DAX_Optimization .md]
 
-    SCOPE -- Doc + Ingestion --> PAR_BD[⚡ Parallel: B ∥ D]
-    PAR_BD --> DOC3[📋 Agent B] & ING3[📦 Agent D]
-    DOC3 --> SUM_BD1[📄 Model_Documentation .md]
-    ING3 --> SUM_BD2[📄 Ingestion_Assessment .md]
-    SUM_BD1 & SUM_BD2 --> MERGE_BD[Phase 3 — Consolidated Summary]
+    SCOPE -- "Any 2–3 agent combo" --> PAR_COMBO[⚡ Parallel: selected agents\nB, C, D, F — any combination]
+    PAR_COMBO --> COMBO_RESULTS[📄 One output file per agent]
+    COMBO_RESULTS --> MERGE_COMBO[Phase 3 — Consolidated Summary\n🟢🟡🔴 Traffic Light]
 
-    SCOPE -- Health + Ingestion --> PAR_CD[⚡ Parallel: C ∥ D]
-    PAR_CD --> HC4[🏥 Agent C] & ING4[📦 Agent D]
-    HC4 --> SUM_CD1[📄 Health_Check_Report .md]
-    ING4 --> SUM_CD2[📄 Ingestion_Assessment .md]
-    SUM_CD1 & SUM_CD2 --> MERGE_CD[Phase 3 — Consolidated Summary]
+    SCOPE -- "Full review (all four)" --> PAR_FULL[⚡ Parallel: B ∥ C ∥ D ∥ F]
+    PAR_FULL --> DOC5[📋 Agent B] & HC5[🏥 Agent C] & ING5[📦 Agent D] & DAX5[⚡ Agent F]
+    DOC5 --> SUM_FULL1[📄 Model_Documentation .md]
+    HC5 --> SUM_FULL2[📄 Health_Check_Report .md]
+    ING5 --> SUM_FULL3[📄 Ingestion_Assessment .md]
+    DAX5 --> SUM_FULL4[📄 DAX_Optimization .md]
+    SUM_FULL1 & SUM_FULL2 & SUM_FULL3 & SUM_FULL4 --> MERGE_FULL[Phase 3 — Consolidated Summary\n🟢🟡🔴 Traffic Light\n32 KPIs across all agents]
 
-    SCOPE -- "Full review (all three)" --> PAR_BCD[⚡ Parallel: B ∥ C ∥ D]
-    PAR_BCD --> DOC5[📋 Agent B] & HC5[🏥 Agent C] & ING5[📦 Agent D]
-    DOC5 --> SUM_F1[📄 Model_Documentation .md]
-    HC5 --> SUM_F2[📄 Health_Check_Report .md]
-    ING5 --> SUM_F3[📄 Ingestion_Assessment .md]
-    SUM_F1 & SUM_F2 & SUM_F3 --> MERGE_FULL[Phase 3 — Consolidated Summary\n🟢🟡🔴 Traffic Light]
-
-    SUM_B & SUM_C & SUM_D --> MERGE_SINGLE[Phase 3 — Consolidated Summary\n🟢🟡🔴 Traffic Light]
+    SUM_B & SUM_C & SUM_D & SUM_F --> MERGE_SINGLE[Phase 3 — Consolidated Summary\n🟢🟡🔴 Traffic Light]
 
     %% ── Background Mode ──
     EXEC_MODE -- Background --> CONNECT_BG[🔌 Agent A\nConnect PBI Model Agent\nInteractive auth]
     CONNECT_BG --> SAVE_PLAN[📄 Phase 1.5\nSave Execution Plan file]
     SAVE_PLAN --> HANDOFF[🚀 Phase 1.6\nBackground Handoff\nrunSubagent autonomous]
-    HANDOFF --> BG_AGENTS[Background agent executes\nremaining B / C / D\nin parallel]
+    HANDOFF --> BG_AGENTS[Background agent executes\nremaining B / C / D / F\nin parallel]
     BG_AGENTS --> BG_UPDATE[Updates Execution Plan\n⏳ → ✅ / ❌]
 
     %% ── Batch Path ──
@@ -82,21 +72,15 @@ flowchart TD
     style CONNECT_I fill:#2ECC71,color:#fff
     style CONNECT_BG fill:#2ECC71,color:#fff
     style DOC fill:#9B59B6,color:#fff
-    style DOC2 fill:#9B59B6,color:#fff
-    style DOC3 fill:#9B59B6,color:#fff
     style DOC5 fill:#9B59B6,color:#fff
     style HC fill:#E67E22,color:#fff
-    style HC2 fill:#E67E22,color:#fff
-    style HC4 fill:#E67E22,color:#fff
     style HC5 fill:#E67E22,color:#fff
     style ING fill:#1ABC9C,color:#fff
-    style ING3 fill:#1ABC9C,color:#fff
-    style ING4 fill:#1ABC9C,color:#fff
     style ING5 fill:#1ABC9C,color:#fff
+    style DAX fill:#D4AC0D,color:#fff
+    style DAX5 fill:#D4AC0D,color:#fff
     style BATCH_E fill:#E74C3C,color:#fff
-    style PAR_BCD fill:#F39C12,color:#fff
-    style PAR_BC fill:#F39C12,color:#fff
-    style PAR_BD fill:#F39C12,color:#fff
-    style PAR_CD fill:#F39C12,color:#fff
+    style PAR_FULL fill:#F39C12,color:#fff
+    style PAR_COMBO fill:#F39C12,color:#fff
     style HANDOFF fill:#8E44AD,color:#fff
     style BATCH_HANDOFF fill:#8E44AD,color:#fff
